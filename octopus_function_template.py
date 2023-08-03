@@ -6,24 +6,43 @@ app = Flask(__name__)
 
 results = {}
 
+@app.route("/v1/function-bar-async/setup", methods=["GET"])
+def function_bar_async_setup_status():
+    file = "model.dat"
+
+    if function_bar_async_setup_condition(file):
+        return {
+            "setup": "NotPerformed"
+        }, 200
+
+    return {
+        "setup": "Performed"
+    }, 200
+
 @app.route("/v1/function-bar-async/setup", methods=["POST"])
 def function_bar_async_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
     file = "model.dat"
 
-    if not os.path.isfile(file) or force_setup:
+    if function_bar_async_setup_condition(file) or force_setup:
         f = open(file, "a")
         f.write("Lets create some model file")
         f.close()
 
         return {
-            "setup": "performed"
+            "setup": "Performed"
         }, 201
 
     return {
-        "setup": "not_performed"
+        "setup": "NotPerformed"
     }, 201
+
+def function_bar_async_setup_condition(file: str):
+    if not os.path.isfile(file):
+        return True
+
+    return False
 
 @app.route("/v1/function-bar-async", methods=["POST"])
 def function_bar_async():
@@ -83,24 +102,43 @@ def function_bar_async_status(id):
 
     return jsonify(response), 201
 
+@app.route("/v1/function-foo-sync/setup", methods=["GET"])
+def function_foo_sync_setup_status():
+    file = "model.dat"
+
+    if function_foo_sync_setup_condition(file):
+        return {
+            "setup": "NotPerformed"
+        }, 200
+
+    return {
+        "setup": "Performed"
+    }, 200
+
 @app.route("/v1/function-foo-sync/setup", methods=["POST"])
 def function_foo_sync_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
     file = "model.dat"
 
-    if not os.path.isfile(file) or force_setup:
+    if function_foo_sync_setup_condition(file) or force_setup:
         f = open(file, "a")
         f.write("Lets create some model file")
         f.close()
 
         return {
-            "setup": "performed"
+            "setup": "Performed"
         }, 201
 
     return {
-        "setup": "not_performed"
+        "setup": "NotPerformed"
     }, 201
+
+def function_foo_sync_setup_condition(file: str):
+    if not os.path.isfile(file):
+        return True
+
+    return False
 
 @app.route("/v1/function-foo-sync", methods=["POST"])
 def function_foo_sync():
@@ -135,5 +173,5 @@ def function_foo_sync_status(id):
 @app.route("/v1/health-check", methods=["GET"])
 def health_check():
     return {
-        "status": "ok"
+        "status": "Ok"
     }
