@@ -30,12 +30,8 @@ def function_bar_async_setup():
         f.write("Lets create some model file")
         f.close()
 
-        return {
-            "setup": "Performed"
-        }, 201
-
     return {
-        "setup": "NotPerformed"
+        "setup": "Performed"
     }, 201
 
 def function_bar_async_setup_condition(file: str):
@@ -126,12 +122,8 @@ def function_foo_sync_setup():
         f.write("Lets create some model file")
         f.close()
 
-        return {
-            "setup": "Performed"
-        }, 201
-
     return {
-        "setup": "NotPerformed"
+        "setup": "Performed"
     }, 201
 
 def function_foo_sync_setup_condition(file: str):
