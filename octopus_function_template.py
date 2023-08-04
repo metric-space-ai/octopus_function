@@ -47,7 +47,7 @@ def function_bar_async():
     value2 = data.get("value2", "")
 
     id = str(uuid.uuid4())
-    status = "initial"
+    status = "Initial"
     response_text = "Some async response text " + value1 + " " + value2
     estimated_response_at = str(datetime.now() + timedelta(seconds=5))
 
@@ -73,7 +73,7 @@ def function_bar_async_status(id):
     if response["progress"] < 25:
         response["estimated_response_at"] = estimated_response_at
         response["progress"] = 25
-        response["status"] = "processing"
+        response["status"] = "Processing"
     elif response["progress"] < 50:
         response["estimated_response_at"] = estimated_response_at
         response["progress"] = 50
@@ -83,7 +83,7 @@ def function_bar_async_status(id):
     elif response["progress"] < 100:
         response["estimated_response_at"] = estimated_response_at
         response["progress"] = 100
-        response["status"] = "processed"
+        response["status"] = "Processed"
         content = str(base64.b64encode(b"test of generated content"))
         file_attachement = {
             "content": content,
@@ -139,7 +139,7 @@ def function_foo_sync():
     value2 = data.get("value2", "")
 
     id = str(uuid.uuid4())
-    status = "processed"
+    status = "Processed"
     response_text = "Some sync response text " + value1 + " " + value2
     estimated_response_at = str(datetime.now() + timedelta(seconds=5))
 
