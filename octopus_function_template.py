@@ -50,6 +50,8 @@ def function_bar_async():
     status = "Initial"
     response_text = "Some async response text " + value1 + " " + value2
     estimated_response_at = str(datetime.now() + timedelta(seconds=5))
+    estimated_response_at = estimated_response_at + "Z"
+    estimated_response_at = estimated_response_at.replace(" ", "T")
 
     response = {
         "id": id,
