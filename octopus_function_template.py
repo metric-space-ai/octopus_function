@@ -100,7 +100,7 @@ def function_bar_async_status(id):
 
     results[id] = response
 
-    return jsonify(response), 201
+    return jsonify(response), 200
 
 @app.route("/v1/function-foo-sync/setup", methods=["GET"])
 def function_foo_sync_setup_status():
@@ -166,7 +166,7 @@ def function_foo_sync():
 def function_foo_sync_status(id):
     response = results[id]
 
-    return jsonify(response), 201
+    return jsonify(response), 200
 
 @app.route("/v1/health-check", methods=["GET"])
 def health_check():
