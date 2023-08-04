@@ -69,6 +69,8 @@ def function_bar_async_status(id):
     response = results[id]
 
     estimated_response_at = str(datetime.now() + timedelta(seconds=5))
+    estimated_response_at = estimated_response_at + "Z"
+    estimated_response_at = estimated_response_at.replace(" ", "T")
 
     if response["progress"] < 25:
         response["estimated_response_at"] = estimated_response_at
@@ -142,6 +144,8 @@ def function_foo_sync():
     status = "Processed"
     response_text = "Some sync response text " + value1 + " " + value2
     estimated_response_at = str(datetime.now() + timedelta(seconds=5))
+    estimated_response_at = estimated_response_at + "Z"
+    estimated_response_at = estimated_response_at.replace(" ", "T")
 
     response = {
         "id": id,
