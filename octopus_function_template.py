@@ -6,6 +6,13 @@ app = Flask(__name__)
 
 results = {}
 
+def get_estimated_response_at(seconds: int) -> str:
+    estimated_response_at = str(datetime.now() + timedelta(seconds))
+    estimated_response_at = estimated_response_at + "Z"
+    estimated_response_at = estimated_response_at.replace(" ", "T")
+
+    return estimated_response_at
+
 @app.route("/v1/function-bar-async/setup", methods=["GET"])
 def function_bar_async_setup_status():
     file = "model.dat"
@@ -49,9 +56,7 @@ def function_bar_async():
     id = str(uuid.uuid4())
     status = "Initial"
     response_text = "Some async response text " + value1 + " " + value2
-    estimated_response_at = str(datetime.now() + timedelta(seconds=5))
-    estimated_response_at = estimated_response_at + "Z"
-    estimated_response_at = estimated_response_at.replace(" ", "T")
+    estimated_response_at = get_estimated_response_at(seconds=5)
 
     response = {
         "id": id,
@@ -70,9 +75,7 @@ def function_bar_async():
 def function_bar_async_status(id):
     response = results[id]
 
-    estimated_response_at = str(datetime.now() + timedelta(seconds=5))
-    estimated_response_at = estimated_response_at + "Z"
-    estimated_response_at = estimated_response_at.replace(" ", "T")
+    estimated_response_at = get_estimated_response_at(seconds=5)
 
     if response["progress"] < 25:
         response["estimated_response_at"] = estimated_response_at
@@ -145,9 +148,7 @@ def function_foo_sync():
     id = str(uuid.uuid4())
     status = "Processed"
     response_text = "Some sync response text " + value1 + " " + value2
-    estimated_response_at = str(datetime.now() + timedelta(seconds=5))
-    estimated_response_at = estimated_response_at + "Z"
-    estimated_response_at = estimated_response_at.replace(" ", "T")
+    estimated_response_at = get_estimated_response_at(seconds=5)
 
     response = {
         "id": id,
@@ -172,4 +173,4 @@ def function_foo_sync_status(id):
 def health_check():
     return {
         "status": "Ok"
-    }
+    }, 200
