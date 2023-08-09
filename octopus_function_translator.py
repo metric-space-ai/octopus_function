@@ -9,7 +9,7 @@ app = Flask(__name__)
 translator = Translator()
 
 def get_estimated_response_at(seconds: int) -> str:
-    estimated_response_at = str(datetime.now() + timedelta(seconds))
+    estimated_response_at = str(datetime.now() + timedelta(seconds=seconds))
     estimated_response_at = estimated_response_at + "Z"
     estimated_response_at = estimated_response_at.replace(" ", "T")
 
@@ -52,7 +52,7 @@ def function_translator():
 
     id = str(uuid.uuid4())
     status = "Initial"
-    response_text = ""
+    response_text = None
     estimated_response_at = get_estimated_response_at(seconds=25)
 
     response = {
