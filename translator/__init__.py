@@ -31,24 +31,16 @@ class Translator:
     def function_translator_get_response(self, id):
         return self.results[id]
 
-    def function_translator_prepare(self):
-        if self.LID == None:
-            self.LID = fasttext.load_model("lid218e.bin")
-        if self.nltk_download == None:
-            nltk.download('punkt')
-        if self.model_dict == None:
-            self.model_dict = self.load_models()
+    def setup(self):
+        URL = str("https://dl.fbaipublicfiles.com/nllb/lid/" + self.file)
+        response = requests.get(URL)
+        open(self.file, "wb").write(response.content)
 
-    def function_translator_setup_condition(self):
+    def setup_condition(self):
         if not os.path.isfile(self.file):
             return True
 
         return False
-
-    def function_translator_setup_execute(self):
-        URL = str("https://dl.fbaipublicfiles.com/nllb/lid/" + self.file)
-        response = requests.get(URL)
-        open(self.file, "wb").write(response.content)
 
     def function_translator_start_thread(self, model_name, sentence_mode, selection_mode, source, target, text, id):
         thread = threading.Thread(target=self.translation, args=(model_name, sentence_mode, selection_mode, source, target, text, id,))
@@ -56,6 +48,21 @@ class Translator:
 
     def function_translator_store_response(self, id, response):
         self.results[id] = response
+
+    def warmup(self):
+        if self.LID == None:
+            self.LID = fasttext.load_model("lid218e.bin")
+        if self.nltk_download == None:
+            nltk.download('punkt')
+            self.nltk_download = True
+        if self.model_dict == None:
+            self.model_dict = self.load_models()
+
+    def warmup_condition(self):
+        if self.LID == None or self.nltk_download == None or self.model_dict == None:
+            return True
+
+        return False
 
     def load_models(self):
         model_name_dict = {
@@ -79,7 +86,7 @@ class Translator:
         return detected_lang_code
 
     def translation(self, model_name, sentence_mode, selection_mode, source, target, text, id):
-        self.function_translator_prepare()
+        self.warmup()
 
         start_time = time.time()
 

@@ -17,7 +17,7 @@ def get_estimated_response_at(seconds: int) -> str:
 
 @app.route("/v1/function-translator/setup", methods=["GET"])
 def function_translator_setup_status():
-    if translator.function_translator_setup_condition():
+    if translator.setup_condition():
         return {
             "setup": "NotPerformed"
         }, 200
@@ -31,13 +31,30 @@ def function_translator_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
 
-    if translator.function_translator_setup_condition() or force_setup:
-        translator.function_translator_setup_execute()
-
-    translator.function_translator_prepare()
+    if translator.setup_condition() or force_setup:
+        translator.setup()
 
     return {
         "setup": "Performed"
+    }, 201
+
+@app.route("/v1/function-translator/warmup", methods=["GET"])
+def function_translator_warmup_status():
+    if translator.warmup_condition():
+        return {
+            "warmup": "NotPerformed"
+        }, 200
+
+    return {
+        "warmup": "Performed"
+    }, 200
+
+@app.route("/v1/function-translator/warmup", methods=["POST"])
+def function_translator_warmup():
+    translator.warmup()
+
+    return {
+        "warmup": "Performed"
     }, 201
 
 @app.route("/v1/function-translator", methods=["POST"])

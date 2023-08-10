@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 
 results = {}
+model = None
 
 def get_estimated_response_at(seconds: int) -> str:
     estimated_response_at = str(datetime.now() + timedelta(seconds))
@@ -46,6 +47,25 @@ def function_bar_async_setup_condition(file: str):
         return True
 
     return False
+
+@app.route("/v1/function-bar-async/warmup", methods=["GET"])
+def function_bar_async_warmup_status():
+    if model == None:
+        return {
+            "warmup": "NotPerformed"
+        }, 200
+
+    return {
+        "warmup": "Performed"
+    }, 200
+
+@app.route("/v1/function-bar-async/warmup", methods=["POST"])
+def function_bar_async_warmup():
+    model = True
+
+    return {
+        "warmup": "Performed"
+    }, 201
 
 @app.route("/v1/function-bar-async", methods=["POST"])
 def function_bar_async():
@@ -138,6 +158,25 @@ def function_foo_sync_setup_condition(file: str):
         return True
 
     return False
+
+@app.route("/v1/function-foo-sync/warmup", methods=["GET"])
+def function_foo_sync_warmup_status():
+    if model == None:
+        return {
+            "warmup": "NotPerformed"
+        }, 200
+
+    return {
+        "warmup": "Performed"
+    }, 200
+
+@app.route("/v1/function-foo-sync/warmup", methods=["POST"])
+def function_foo_sync_warmup():
+    model = True
+
+    return {
+        "warmup": "Performed"
+    }, 201
 
 @app.route("/v1/function-foo-sync", methods=["POST"])
 def function_foo_sync():
