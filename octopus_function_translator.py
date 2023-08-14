@@ -56,6 +56,7 @@ def function_translator():
     model_name = "3.3B"
     selection_mode = "Manually select"
     sentence_mode = "Sentence-wise"
+    device_map = data.get("device_map", "")
     source = data.get("source_language", "")
     target = data.get("target_language", "")
     text = data.get("text", "")

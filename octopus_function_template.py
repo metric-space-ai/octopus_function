@@ -53,6 +53,7 @@ def function_bar_async_warmup():
 @app.route("/v1/function-bar-async", methods=["POST"])
 def function_bar_async():
     data = request.json
+    device_map = data.get("device_map", "")
     value1 = data.get("value1", "")
     value2 = data.get("value2", "")
 
@@ -153,6 +154,7 @@ def function_foo_sync_warmup():
 @app.route("/v1/function-foo-sync", methods=["POST"])
 def function_foo_sync():
     data = request.json
+    device_map = data.get("device_map", "")
     value1 = data.get("value1", "")
     value2 = data.get("value2", "")
 
