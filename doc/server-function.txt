@@ -24,14 +24,14 @@ Octopus Server calls Octopus Function service on endpoint "/function-name" with 
   ]
 }
 
-status can have 3 values: initial, processing, processed
+status can have 3 values: Initial, Processing, Processed
 progress can have values from 0 to 100
 
 In case if AI function can return a response in less than 5 seconds it can return an immediate response i.e.
 
 {
   "id": "e0a15d60-6bc8-48de-b1dc-12cb87e4da13",
-  "status": "processed",
+  "status": "Processed",
   "progress": 100,
   "estimated_response_at": "2023-08-01 19:50:47+00",
   "response": "some text response from the system",
@@ -42,14 +42,14 @@ In case if AI function can not return a response in less than 5 seconds, it can 
 
 {
   "id": "e0a15d60-6bc8-48de-b1dc-12cb87e4da13",
-  "status": "initial",
+  "status": "Initial",
   "progress": 0,
   "estimated_response_at": "2023-08-01 19:50:47+00",
   "response": null,
   "file_attachements": []
 }
 
-If the octopus server will not receive a response with the status "processed" it will poll for a response from the AI function on endpoint "/function-name/:id"
+If the octopus server will not receive a response with the status "Processed" it will poll for a response from the AI function on endpoint "/function-name/:id"
 
 In such a scenario endpoint
 
@@ -59,7 +59,7 @@ Should return responses like
 
 {
   "id": "e0a15d60-6bc8-48de-b1dc-12cb87e4da13",
-  "status": "processing",
+  "status": "Processing",
   "progress": 20,
   "estimated_response_at": "2023-08-01 19:51:00+00",
   "response": null,
@@ -72,7 +72,7 @@ Or response like
 
 {
   "id": "e0a15d60-6bc8-48de-b1dc-12cb87e4da13",
-  "status": "processed",
+  "status": "Processed",
   "progress": 100,
   "estimated_response_at": "2023-08-01 19:52:00+00",
   "response": "some response from API",
@@ -85,4 +85,4 @@ Or response like
   ]
 }
 
-When the octopus server will receive a response with the status "processed" it will stop polling. Octopus server is taking into account estimated_response_at timestamp when polling.
+When the octopus server will receive a response with the status "Processed" it will stop polling. Octopus server is taking into account estimated_response_at timestamp when polling.

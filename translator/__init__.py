@@ -1,10 +1,9 @@
-from datetime import datetime, timedelta
+import utils
 import threading
 
 import requests
 import os
 import torch
-import gradio as gr
 import time
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import fasttext
@@ -21,33 +20,22 @@ class Translator:
         self.nltk_download = None
         self.results = {}
 
-    def get_estimated_response_at(self, seconds: int) -> str:
-        estimated_response_at = str(datetime.now() + timedelta(seconds))
-        estimated_response_at = estimated_response_at + "Z"
-        estimated_response_at = estimated_response_at.replace(" ", "T")
-
-        return estimated_response_at
-
-    def function_translator_get_response(self, id):
+    def get_result(self, id):
         return self.results[id]
+
+    def set_result(self, id, response):
+        self.results[id] = response
 
     def setup(self):
         URL = str("https://dl.fbaipublicfiles.com/nllb/lid/" + self.file)
         response = requests.get(URL)
         open(self.file, "wb").write(response.content)
 
-    def setup_condition(self):
+    def setup_condition(self) -> bool:
         if not os.path.isfile(self.file):
             return True
 
         return False
-
-    def function_translator_start_thread(self, model_name, sentence_mode, selection_mode, source, target, text, id):
-        thread = threading.Thread(target=self.translation, args=(model_name, sentence_mode, selection_mode, source, target, text, id,))
-        thread.start()
-
-    def function_translator_store_response(self, id, response):
-        self.results[id] = response
 
     def warmup(self):
         if self.LID == None:
@@ -58,11 +46,15 @@ class Translator:
         if self.model_dict == None:
             self.model_dict = self.load_models()
 
-    def warmup_condition(self):
+    def warmup_condition(self) -> bool:
         if self.LID == None or self.nltk_download == None or self.model_dict == None:
             return True
 
         return False
+
+    def function_translator_start_thread(self, model_name, sentence_mode, selection_mode, source, target, text, id):
+        thread = threading.Thread(target=self.translation, args=(model_name, sentence_mode, selection_mode, source, target, text, id,))
+        thread.start()
 
     def load_models(self):
         model_name_dict = {
@@ -127,12 +119,12 @@ class Translator:
             'result': output
         }
 
-        response = self.function_translator_get_response(id)
-        estimated_response_at = self.get_estimated_response_at(0)
+        response = self.get_result(id)
+        estimated_response_at = utils.get_estimated_response_at(0)
         response["estimated_response_at"] = estimated_response_at
         response["progress"] = 100
         response["response"] = str(result["result"]),
         response["status"] = "Processed"
-        self.function_translator_store_response(id, response)
+        self.set_result(id, response)
 
         return result

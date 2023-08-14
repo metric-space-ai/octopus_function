@@ -1,24 +1,16 @@
-import base64, os, uuid
-from datetime import datetime, timedelta
+import base64, uuid
 from flask import Flask, jsonify, request
+
+import utils
+from template import Template
 
 app = Flask(__name__)
 
-results = {}
-model = None
-
-def get_estimated_response_at(seconds: int) -> str:
-    estimated_response_at = str(datetime.now() + timedelta(seconds))
-    estimated_response_at = estimated_response_at + "Z"
-    estimated_response_at = estimated_response_at.replace(" ", "T")
-
-    return estimated_response_at
+template = Template()
 
 @app.route("/v1/function-bar-async/setup", methods=["GET"])
 def function_bar_async_setup_status():
-    file = "model.dat"
-
-    if function_bar_async_setup_condition(file):
+    if template.setup_condition():
         return {
             "setup": "NotPerformed"
         }, 200
@@ -31,26 +23,17 @@ def function_bar_async_setup_status():
 def function_bar_async_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
-    file = "model.dat"
 
-    if function_bar_async_setup_condition(file) or force_setup:
-        f = open(file, "a")
-        f.write("Lets create some model file")
-        f.close()
+    if template.setup_condition() or force_setup:
+        template.setup()
 
     return {
         "setup": "Performed"
     }, 201
 
-def function_bar_async_setup_condition(file: str):
-    if not os.path.isfile(file):
-        return True
-
-    return False
-
 @app.route("/v1/function-bar-async/warmup", methods=["GET"])
 def function_bar_async_warmup_status():
-    if model == None:
+    if template.warmup_condition():
         return {
             "warmup": "NotPerformed"
         }, 200
@@ -61,7 +44,7 @@ def function_bar_async_warmup_status():
 
 @app.route("/v1/function-bar-async/warmup", methods=["POST"])
 def function_bar_async_warmup():
-    model = True
+    template.warmup()
 
     return {
         "warmup": "Performed"
@@ -76,7 +59,7 @@ def function_bar_async():
     id = str(uuid.uuid4())
     status = "Initial"
     response_text = "Some async response text " + value1 + " " + value2
-    estimated_response_at = get_estimated_response_at(seconds=5)
+    estimated_response_at = utils.get_estimated_response_at(5)
 
     response = {
         "id": id,
@@ -87,15 +70,15 @@ def function_bar_async():
         "file_attachements": list()
     }
 
-    results[id] = response
+    template.set_result(id, response)
 
     return jsonify(response), 201
 
 @app.route("/v1/function-bar-async/<string:id>", methods=["GET"])
 def function_bar_async_status(id):
-    response = results[id]
+    response = template.get_result(id)
 
-    estimated_response_at = get_estimated_response_at(seconds=5)
+    estimated_response_at = utils.get_estimated_response_at(5)
 
     if response["progress"] < 25:
         response["estimated_response_at"] = estimated_response_at
@@ -121,15 +104,13 @@ def function_bar_async_status(id):
         file_attachements.append(file_attachement)
         response["file_attachements"] = file_attachements
 
-    results[id] = response
+    template.set_result(id, response)
 
     return jsonify(response), 200
 
 @app.route("/v1/function-foo-sync/setup", methods=["GET"])
 def function_foo_sync_setup_status():
-    file = "model.dat"
-
-    if function_foo_sync_setup_condition(file):
+    if template.setup_condition():
         return {
             "setup": "NotPerformed"
         }, 200
@@ -142,26 +123,17 @@ def function_foo_sync_setup_status():
 def function_foo_sync_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
-    file = "model.dat"
 
-    if function_foo_sync_setup_condition(file) or force_setup:
-        f = open(file, "a")
-        f.write("Lets create some model file")
-        f.close()
+    if template.setup_condition() or force_setup:
+        template.setup()
 
     return {
         "setup": "Performed"
     }, 201
 
-def function_foo_sync_setup_condition(file: str):
-    if not os.path.isfile(file):
-        return True
-
-    return False
-
 @app.route("/v1/function-foo-sync/warmup", methods=["GET"])
 def function_foo_sync_warmup_status():
-    if model == None:
+    if template.warmup_condition():
         return {
             "warmup": "NotPerformed"
         }, 200
@@ -172,7 +144,7 @@ def function_foo_sync_warmup_status():
 
 @app.route("/v1/function-foo-sync/warmup", methods=["POST"])
 def function_foo_sync_warmup():
-    model = True
+    template.warmup()
 
     return {
         "warmup": "Performed"
@@ -187,7 +159,7 @@ def function_foo_sync():
     id = str(uuid.uuid4())
     status = "Processed"
     response_text = "Some sync response text " + value1 + " " + value2
-    estimated_response_at = get_estimated_response_at(seconds=5)
+    estimated_response_at = utils.get_estimated_response_at(5)
 
     response = {
         "id": id,
@@ -198,13 +170,13 @@ def function_foo_sync():
         "file_attachements": list()
     }
 
-    results[id] = response
+    template.set_result(id, response)
 
     return jsonify(response), 201
 
 @app.route("/v1/function-foo-sync/<string:id>", methods=["GET"])
 def function_foo_sync_status(id):
-    response = results[id]
+    response = template.get_result(id)
 
     return jsonify(response), 200
 

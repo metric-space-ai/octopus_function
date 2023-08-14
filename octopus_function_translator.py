@@ -1,19 +1,12 @@
-import base64, os, uuid
-from datetime import datetime, timedelta
+import uuid
 from flask import Flask, jsonify, request
 
+import utils
 from translator import Translator
 
 app = Flask(__name__)
 
 translator = Translator()
-
-def get_estimated_response_at(seconds: int) -> str:
-    estimated_response_at = str(datetime.now() + timedelta(seconds=seconds))
-    estimated_response_at = estimated_response_at + "Z"
-    estimated_response_at = estimated_response_at.replace(" ", "T")
-
-    return estimated_response_at
 
 @app.route("/v1/function-translator/setup", methods=["GET"])
 def function_translator_setup_status():
@@ -70,7 +63,7 @@ def function_translator():
     id = str(uuid.uuid4())
     status = "Initial"
     response_text = None
-    estimated_response_at = get_estimated_response_at(seconds=25)
+    estimated_response_at = utils.get_estimated_response_at(25)
 
     response = {
         "id": id,
@@ -81,7 +74,7 @@ def function_translator():
         "file_attachements": list()
     }
 
-    translator.function_translator_store_response(id, response)
+    translator.set_result(id, response)
 
     translator.function_translator_start_thread(model_name, sentence_mode, selection_mode, source, target, text, id)
 
@@ -89,7 +82,7 @@ def function_translator():
 
 @app.route("/v1/function-translator/<string:id>", methods=["GET"])
 def function_translator_status(id):
-    response = translator.function_translator_get_response(id)
+    response = translator.get_result(id)
 
     return jsonify(response), 200
 
