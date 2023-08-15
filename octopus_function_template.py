@@ -1,16 +1,98 @@
-import base64, uuid
+import base64, json, os, uuid
 from flask import Flask, jsonify, request
 
 import utils
-from template import Template
 
 app = Flask(__name__)
 
-template = Template()
+### Configuration section
+config = '''{
+    "device_map": {
+       "max_memory": {"0": "10GiB", "1": "10GiB", "cpu": "30GiB"}
+    },
+    "model_setup": {
+        "file": "model.dat"
+    },
+    "functions": [
+        {
+            "name": "function_bar_async",
+            "url_part": "function-bar-async",
+            "description": "Asynchronous communication test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "value1": {
+                        "type": "string",
+                        "description": "First value"
+                    },
+                    "value2": { "type": "string", "enum": ["abc", "def"], "description": "Second value" }
+                },
+                "required": ["value1", "value2"]
+            }
+        },
+        {
+            "name": "function_foo_sync",
+            "url_part": "function-foo-sync",
+            "description": "Synchronous communication test function",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "value1": {
+                        "type": "string",
+                        "description": "First value"
+                    },
+                    "value2": { "type": "string", "enum": ["abc", "def"], "description": "Second value" }
+                },
+                "required": ["value1", "value2"]
+            }
+        }
+    ]}'''
+config = json.loads(config)
 
-@app.route("/v1/function-bar-async/setup", methods=["GET"])
+### AI function section
+file = config["model_setup"]["file"]
+model = None
+results = {}
+
+def get_result(id):
+    return results[id]
+
+def set_result(id, response):
+    results[id] = response
+
+def setup():
+# Start editing here
+    f = open(file, "a")
+    f.write("Lets create some model file")
+    f.close()
+# Finish editing here
+
+def setup_condition() -> bool:
+# Start editing here
+    if not os.path.isfile(file):
+        return True
+# Finish editing here
+    return False
+
+# Please load all models to memory here
+def warmup():
+# Start editing here
+    global model
+    if model == None:
+        model = True
+# Finish editing here
+
+def warmup_condition() -> bool:
+# Start editing here
+    if model == None:
+        return True
+# Finish editing here
+    return False
+
+### AI service section
+@app.route("/v1/{url_part}/setup".format(url_part = config["functions"][0]["url_part"]), methods=["GET"])
 def function_bar_async_setup_status():
-    if template.setup_condition():
+    if setup_condition():
         return {
             "setup": "NotPerformed"
         }, 200
@@ -19,21 +101,21 @@ def function_bar_async_setup_status():
         "setup": "Performed"
     }, 200
 
-@app.route("/v1/function-bar-async/setup", methods=["POST"])
+@app.route("/v1/{url_part}/setup".format(url_part = config["functions"][0]["url_part"]), methods=["POST"])
 def function_bar_async_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
 
-    if template.setup_condition() or force_setup:
-        template.setup()
+    if setup_condition() or force_setup:
+        setup()
 
     return {
         "setup": "Performed"
     }, 201
 
-@app.route("/v1/function-bar-async/warmup", methods=["GET"])
+@app.route("/v1/{url_part}/warmup".format(url_part = config["functions"][0]["url_part"]), methods=["GET"])
 def function_bar_async_warmup_status():
-    if template.warmup_condition():
+    if warmup_condition():
         return {
             "warmup": "NotPerformed"
         }, 200
@@ -42,16 +124,22 @@ def function_bar_async_warmup_status():
         "warmup": "Performed"
     }, 200
 
-@app.route("/v1/function-bar-async/warmup", methods=["POST"])
+@app.route("/v1/{url_part}/warmup".format(url_part = config["functions"][0]["url_part"]), methods=["POST"])
 def function_bar_async_warmup():
-    template.warmup()
+    warmup()
 
     return {
         "warmup": "Performed"
     }, 201
 
-@app.route("/v1/function-bar-async", methods=["POST"])
+@app.route("/v1/{url_part}".format(url_part = config["functions"][0]["url_part"]), methods=["POST"])
 def function_bar_async():
+# Start editing here
+    if setup_condition():
+        setup()
+    if warmup_condition():
+        warmup()
+
     data = request.json
     device_map = data.get("device_map", "")
     value1 = data.get("value1", "")
@@ -71,13 +159,15 @@ def function_bar_async():
         "file_attachements": list()
     }
 
-    template.set_result(id, response)
+    set_result(id, response)
 
     return jsonify(response), 201
+# Finish editing here
 
-@app.route("/v1/function-bar-async/<string:id>", methods=["GET"])
+@app.route("/v1/{url_part}/<string:id>".format(url_part = config["functions"][0]["url_part"]), methods=["GET"])
 def function_bar_async_status(id):
-    response = template.get_result(id)
+# Start editing here
+    response = get_result(id)
 
     estimated_response_at = utils.get_estimated_response_at(5)
 
@@ -105,13 +195,14 @@ def function_bar_async_status(id):
         file_attachements.append(file_attachement)
         response["file_attachements"] = file_attachements
 
-    template.set_result(id, response)
+    set_result(id, response)
 
     return jsonify(response), 200
+# Finish editing here
 
-@app.route("/v1/function-foo-sync/setup", methods=["GET"])
+@app.route("/v1/{url_part}/setup".format(url_part = config["functions"][1]["url_part"]), methods=["GET"])
 def function_foo_sync_setup_status():
-    if template.setup_condition():
+    if setup_condition():
         return {
             "setup": "NotPerformed"
         }, 200
@@ -120,21 +211,21 @@ def function_foo_sync_setup_status():
         "setup": "Performed"
     }, 200
 
-@app.route("/v1/function-foo-sync/setup", methods=["POST"])
+@app.route("/v1/{url_part}/setup".format(url_part = config["functions"][1]["url_part"]), methods=["POST"])
 def function_foo_sync_setup():
     data = request.json
     force_setup = data.get("force_setup", False)
 
-    if template.setup_condition() or force_setup:
-        template.setup()
+    if setup_condition() or force_setup:
+        setup()
 
     return {
         "setup": "Performed"
     }, 201
 
-@app.route("/v1/function-foo-sync/warmup", methods=["GET"])
+@app.route("/v1/{url_part}/warmup".format(url_part = config["functions"][1]["url_part"]), methods=["GET"])
 def function_foo_sync_warmup_status():
-    if template.warmup_condition():
+    if warmup_condition():
         return {
             "warmup": "NotPerformed"
         }, 200
@@ -143,16 +234,22 @@ def function_foo_sync_warmup_status():
         "warmup": "Performed"
     }, 200
 
-@app.route("/v1/function-foo-sync/warmup", methods=["POST"])
+@app.route("/v1/{url_part}/warmup".format(url_part = config["functions"][1]["url_part"]), methods=["POST"])
 def function_foo_sync_warmup():
-    template.warmup()
+    warmup()
 
     return {
         "warmup": "Performed"
     }, 201
 
-@app.route("/v1/function-foo-sync", methods=["POST"])
+@app.route("/v1/{url_part}".format(url_part = config["functions"][1]["url_part"]), methods=["POST"])
 def function_foo_sync():
+# Start editing here
+    if setup_condition():
+        setup()
+    if warmup_condition():
+        warmup()
+
     data = request.json
     device_map = data.get("device_map", "")
     value1 = data.get("value1", "")
@@ -172,15 +269,18 @@ def function_foo_sync():
         "file_attachements": list()
     }
 
-    template.set_result(id, response)
+    set_result(id, response)
 
     return jsonify(response), 201
+# Finish editing here
 
-@app.route("/v1/function-foo-sync/<string:id>", methods=["GET"])
+@app.route("/v1/{url_part}/<string:id>".format(url_part = config["functions"][1]["url_part"]), methods=["GET"])
 def function_foo_sync_status(id):
-    response = template.get_result(id)
+# Start editing here
+    response = get_result(id)
 
     return jsonify(response), 200
+# Finish editing here
 
 @app.route("/v1/health-check", methods=["GET"])
 def health_check():
