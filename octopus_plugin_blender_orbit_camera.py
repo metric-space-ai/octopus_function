@@ -178,12 +178,12 @@ class ModelManager:
 
 model_manager = ModelManager(config)
 
-@app.route('/setup', methods=['POST'])
+@app.route('/v1/setup', methods=['POST'])
 def setup():
     model_manager.setup()
     return jsonify({"comment": "models loaded successfully", "status": "Ok"}), 201
 
-@app.route('/<function_name>', methods=['POST'])
+@app.route('/v1/<function_name>', methods=['POST'])
 def generic_route(function_name):
     function_config = next((f for f in config["functions"] if f["name"] == function_name), None)
 
