@@ -215,11 +215,11 @@ import time
 threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
-public_url = ngrok.connect(5000).public_url
+#public_url = ngrok.connect(5000).public_url
 
 function_names = [func['name'] for func in config["functions"]]
 
-print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
 for function_name in function_names:
