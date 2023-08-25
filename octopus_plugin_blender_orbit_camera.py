@@ -181,7 +181,7 @@ model_manager = ModelManager(config)
 @app.route('/v1/setup', methods=['POST'])
 def setup():
     model_manager.setup()
-    return jsonify({"comment": "models loaded successfully", "status": "Ok"}), 201
+    return jsonify({"status": "models loaded successfully", "setup": "Performed"}), 201
 
 @app.route('/v1/<function_name>', methods=['POST'])
 def generic_route(function_name):
