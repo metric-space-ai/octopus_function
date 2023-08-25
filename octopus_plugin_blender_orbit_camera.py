@@ -198,7 +198,10 @@ def generic_route(function_name):
 
     result = model_manager.infer(parameters)
     if result:
-        return app.response_class(result, content_type=function_config["return_type"]), 201
+        file = open(result, mode='rb')
+        fcontent = file.read()
+        file.close()
+        return app.response_class(fcontent, content_type=function_config["return_type"]), 201
     else:
         return jsonify({"error": "Error during inference"}), 500
 
