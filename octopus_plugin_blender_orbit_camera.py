@@ -216,7 +216,7 @@ threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
 #public_url = ngrok.connect(5000).public_url
-public_url = "http://127.0.0.1:5002/"
+public_url = "http://127.0.0.1:5002"
 
 function_names = [func['name'] for func in config["functions"]]
 
