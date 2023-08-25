@@ -207,72 +207,72 @@ def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
 
-import threading
-from pyngrok import ngrok
-import time
+#import threading
+#from pyngrok import ngrok
+#import time
 
 # Start the Flask server in a new thread
-threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+#threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
 #public_url = ngrok.connect(5000).public_url
-public_url = "http://127.0.0.1:5002"
+#public_url = "http://127.0.0.1:5002"
 
-function_names = [func['name'] for func in config["functions"]]
+#function_names = [func['name'] for func in config["functions"]]
 
-print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
-for function_name in function_names:
-    time.sleep(5)
-    print(f'Endpoint here: {public_url}/{function_name}')
+#for function_name in function_names:
+#    time.sleep(5)
+#    print(f'Endpoint here: {public_url}/{function_name}')
 
-import requests
+#import requests
 
-BASE_URL = f"{public_url}"
+#BASE_URL = f"{public_url}"
 
 ### BEGIN USER EDITABLE SECTION ###
-def setup_test():
-    response = requests.post(f"{BASE_URL}/setup")
+#def setup_test():
+#    response = requests.post(f"{BASE_URL}/setup")
 
     # Check if the request was successful
-    if response.status_code == 201:
-        return (True, response.json())  # True indicates success
-    else:
-        return (False, response.json())  # False indicates an error
+#    if response.status_code == 201:
+#        return (True, response.json())  # True indicates success
+#    else:
+#        return (False, response.json())  # False indicates an error
 
-def infer_test(position=60, zoom="far", resolution="full-hd", tilt="down"):
-    headers = {
-        "Content-Type": "application/json"
-    }
-    data = {
-        "position": position,
-        "zoom": zoom,
-        "resolution": resolution,
-        "tilt":tilt
-    }
-    response = requests.post(f"{BASE_URL}/orbit-camera", headers=headers, json=data)
+#def infer_test(position=60, zoom="far", resolution="full-hd", tilt="down"):
+#    headers = {
+#        "Content-Type": "application/json"
+#    }
+#    data = {
+#        "position": position,
+#        "zoom": zoom,
+#        "resolution": resolution,
+#        "tilt":tilt
+#    }
+#    response = requests.post(f"{BASE_URL}/orbit-camera", headers=headers, json=data)
 
-    if response.status_code == 201:
+#    if response.status_code == 201:
         # Save the image to a file
-        os.replace(response.content, "output_image.png")
-        print("Image saved as output_image.jpeg!")
-        return (True, "Image saved successfully!")  # True indicates success
-    else:
-        return (False, response.json())  # False indicates an error
+#        os.replace(response.content, "output_image.png")
+#        print("Image saved as output_image.jpeg!")
+#        return (True, "Image saved successfully!")  # True indicates success
+#    else:
+#        return (False, response.json())  # False indicates an error
 
 ### END USER EDITABLE SECTION ###
 
 # Testing
-result_setup = setup_test()
-print(result_setup)
+#result_setup = setup_test()
+#print(result_setup)
 
-import time
+#import time
 
-start = time.time()
+#start = time.time()
 
-result_infer = infer_test()
-print(result_infer)
+#result_infer = infer_test()
+#print(result_infer)
 
-end = time.time()
-print(end - start)
+#end = time.time()
+#print(end - start)
