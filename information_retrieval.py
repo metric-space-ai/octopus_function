@@ -1,22 +1,23 @@
 import os
 os.environ["FLASK_ENV"] = "development"
 
-dependencies = [
-    'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
-    'pip install transformers',
-    'pip -q install langchain',
-    'pip install -q flask',
-    'pip install pypdf',
-    'pip install cython',
-    'pip install sentence_transformers',
-    'pip install chromadb',
-    'pip install -U accelerate',
-    'pip install -U sentencepiece',
-    'pip install flask pyngrok'
-]
+# dependencies = [
+#     'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
+#     'pip install transformers',
+#     'pip -q install langchain',
+#     'pip install -q flask',
+#     'pip install pypdf',
+#     'pip install cython',
+#     'pip install sentence_transformers',
+#     'pip install chromadb',
+#     'pip install -U accelerate',
+#     'pip install -U sentencepiece',
+#     'pip install flask pyngrok',
+#     'pip install gdown'
+# ]
 
-for command in dependencies:
-    os.system(command)
+# for command in dependencies:
+#     os.system(command)
 
 
 # ---------------------------------------------------
@@ -51,11 +52,7 @@ config_str = '''
                     "query": {
                         "type": "string",
                         "description": "Answer to the query to search from the database"
-                    },
-                    "llm_response": {
-                        "type": "json",
-                        "description": "Answer to the query to search from the database"
-                    },
+                    }
                 },
                 "required": ["query"]
             },
@@ -71,7 +68,9 @@ config_str = '''
 # ---------------------------------------------------
 import json
 import time
+import gdown
 import torch
+import zipfile
 import textwrap
 import requests
 import threading
@@ -84,124 +83,51 @@ from configurations.prompt_config import PROMPT_CONFIG
 
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import Chroma
-from langchain.llms import HuggingFacePipeline
 from langchain.prompts import PromptTemplate
+from langchain.llms import HuggingFacePipeline
 from langchain.document_loaders import PyPDFLoader
 from langchain.document_loaders import DirectoryLoader
 from langchain.embeddings import HuggingFaceBgeEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+class PROMPT_CONFIG:
+    def __init__(self):
+        # ---------------------------------------------------
+        # forming the LLaMA-2 prompt style
+        # ---------------------------------------------------
+        self.B_INST, self.E_INST = "[INST]", "[/INST]"
+        self.B_SYS, self.E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
+        self.DEFAULT_SYSTEM_PROMPT = """\
+        You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe. Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+
+        If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."""
+
+        self.SYS_PROMPT = """You are a helpful, respectful and honest assistant. Always answer as helpfully as possible using the context text provided. Your answers should only answer the question once and not have any text after the answer is done.
+        ​
+        If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information. """
+
+        self.INSTRUCTION = """CONTEXT:/n/n {context}/n
+        ​
+        Question: {question}"""
+
+        SYSTEM_PROMPT = self.B_SYS + self.DEFAULT_SYSTEM_PROMPT + self.E_SYS
+        self.prompt_template =  self.B_INST + SYSTEM_PROMPT + self.INSTRUCTION + self.E_INST
+
+        llama_prompt = PromptTemplate(template=self.prompt_template, input_variables=["context", "question"])
+        self.chain_type_kwargs = {"prompt": llama_prompt}  
+
+        pdf_path = 'data'
+        os.makedirs(pdf_path, exist_ok=True)
+        self.zip_path = 'data/new_papers.zip'
+        self.unzip_path = 'data'
+        self.gdrive_token = 'https://drive.google.com/uc?id=1O5gQKwcYA_7JzQr8JmhmonVwTov_cWlL'
+
 constants = PROMPT_CONFIG()
 
-# ---------------------------------------------------
-# create the model manager class
-# ---------------------------------------------------
-class ModelManager:
-    def __init__(self, config):
-        self.config = config
-        self.models = {}
-        self.device = self.select_device()
-
-    def select_device(self):
-        if not torch.cuda.is_available():
-            return "cpu"
-
-        device_map = self.config.get('device_map', {})
-        available_devices = list(device_map.keys())
-        return available_devices[0] if available_devices else "cpu"
-
-    def setup(self):
-        self.models.clear()
-
-        # form the model in sync for the query retrieval
-        for model_info in self.config["models"]:
-            
-            # get the embeddings model to embed the pdfs in the folder
-            if model_info["name"] == 'embeddings_model':
-                loader      = DirectoryLoader('data/new_papers', glob="./*.pdf", loader_cls=PyPDFLoader)
-                documents   = loader.load()
-
-                text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-                texts = text_splitter.split_documents(documents)
-                
-                embed_model     = HuggingFaceBgeEmbeddings(model_name=model_info["key"], 
-                                                           model_kwargs={'device': self.device}, 
-                                                           encode_kwargs={'normalize_embeddings': True},
-                                                           query_instruction="Generate a representation for this sentence for retrieving related articles: ")
-
-                vectordb        = Chroma.from_documents(documents=texts, embedding=embed_model, persist_directory='db')
-                retriever       = vectordb.as_retriever(search_kwargs={"k": 5})
-
-                self.models[model_info["name"]] = retriever
-
-            elif model_info['name'] == 'llama':
-                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device=-1, token='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')
-                llm  = HuggingFacePipeline(pipeline=pipe)
-
-                qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.models['embeddings_model'], chain_type_kwargs=constants.chain_type_kwargs, return_source_documents=True)
-                qa_chain.to(self.device)
-                self.models[model_info["name"]] = qa_chain
-
-        return True
-
-
-    def infer(self, parameters):
-        try:
-            ### BEGIN USER EDITABLE SECTION ###
-            query_model = self.models["llama"]
-            
-            llm_response = query_model(parameters['query'])
-            torch.cuda.empty_cache() if self.device != "cpu" else None
-
-            if 'llm_response' in parameters:
-                return process_llm_response(llm_response)
-            ### END USER EDITABLE SECTION ###
-        except Exception as e:
-            print(f"Error during inference: {e}")
-            return None
-
-# ---------------------------------------------------
-# load configurations for the program block
-# ---------------------------------------------------
-config          = json.loads(config_str)
-model_manager   = ModelManager(config)
-
-# ---------------------------------------------------
-# make the ap and the corresponding function
-# ---------------------------------------------------
-app     = Flask(__name__)
-
-
-# startup the application
-# ---------------------------------------------------
-@app.route('/setup', methods=['GET'])
-def setup():
-    model_manager.setup()
-    return jsonify({"status": "models loaded successfully"})
-
-@app.route('/v1/<function_name>', methods=['POST'])
-def generic_route(function_name):
-    function_config = next((f for f in config["functions"] if f["name"] == function_name), None)
-
-    if not function_config:
-        return jsonify({"error": "Invalid endpoint"}), 404
-
-    if function_config["input_type"] != "json":
-        return jsonify({"error": f"Unsupported input type {function_config['input_type']}"}), 400
-
-    data = request.json
-    parameters = {k: data[k] for k in function_config["parameters"]["properties"].keys() if k in data}
-
-    result = model_manager.infer(parameters)
-    if result:
-        return app.response_class(result, content_type=function_config["return_type"])
-    else:
-        return jsonify({"error": "Error during inference"}), 500
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    # Generic exception handler
-    return jsonify(error=str(e)), 500
+gdown.download(constants.gdrive_token, output=constants.zip_path, quiet=False, fuzzy=True)
+with zipfile.ZipFile(constants.zip_path, 'r') as zip_ref:
+    # Extract all contents to the target directory
+    zip_ref.extractall(constants.unzip_path)
 
 # ---------------------------------------------------
 # chat completion functions
@@ -228,3 +154,163 @@ def process_llm_response(llm_response):
 
     for source in unique_sources:
         print(source)
+
+# ---------------------------------------------------
+# create the model manager class
+# ---------------------------------------------------
+class QueryModelManager:
+    def __init__(self, config):
+        self.config = config
+        self.models = {}
+        self.device = self.select_device()
+
+    def select_device(self):
+        if not torch.cuda.is_available():
+            return "cpu"
+
+        device_map = self.config.get('device_map', {})
+        available_devices = list(device_map.keys())
+        return available_devices[0] if available_devices else "cpu"
+
+    def setup(self):
+        self.models.clear()
+
+        # form the model in sync for the query retrieval
+        for model_info in self.config["models"]:
+            
+            # get the embeddings model to embed the pdfs in the folder
+            if model_info["name"] == 'embeddings_model':
+                loader      = DirectoryLoader('data/', glob="./*.pdf", recursive=True, loader_cls=PyPDFLoader)
+                documents   = loader.load()
+
+                text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+                texts = text_splitter.split_documents(documents)
+                
+                embed_model     = HuggingFaceBgeEmbeddings(model_name=model_info["key"], 
+                                                           model_kwargs={'device': self.device}, 
+                                                           encode_kwargs={'normalize_embeddings': True},
+                                                           query_instruction="Generate a representation for this sentence for retrieving related articles: ")
+
+                vectordb        = Chroma.from_documents(documents=texts, embedding=embed_model, persist_directory='db')
+                retriever       = vectordb.as_retriever(search_kwargs={"k": 5})
+
+                self.models[model_info["name"]] = retriever
+
+            elif model_info['name'] == 'llama_model':
+                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device=-1, token='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')
+                llm  = HuggingFacePipeline(pipeline=pipe)
+
+                qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.models['embeddings_model'], chain_type_kwargs=constants.chain_type_kwargs, return_source_documents=True)
+                self.models[model_info["name"]] = qa_chain
+
+        return True
+
+
+    def infer(self, parameters):
+        try:
+            ### BEGIN USER EDITABLE SECTION ###
+            query_model = self.models["llama_model"]
+            
+            llm_response = query_model(parameters['query'])
+            torch.cuda.empty_cache() if self.device != "cpu" else None
+
+            return llm_response
+            ### END USER EDITABLE SECTION ###
+        except Exception as e:
+            print(f"Error during inference: {e}")
+            return None
+
+# ---------------------------------------------------
+# load configurations for the program block
+# ---------------------------------------------------
+config          = json.loads(config_str)
+model_manager   = QueryModelManager(config)
+
+# ---------------------------------------------------
+# make the ap and the corresponding function
+# ---------------------------------------------------
+app     = Flask(__name__)
+
+
+# startup the application
+# ---------------------------------------------------
+@app.route('/setup', methods=['GET'])
+def setup():
+    model_manager.setup()
+    return jsonify({"status": "models loaded successfully"})
+
+@app.route('/<function_name>', methods=['POST'])
+def generic_route(function_name):
+    function_config = next((f for f in config["functions"] if f["name"] == function_name), None)
+
+    if not function_config:
+        return jsonify({"error": "Invalid endpoint"}), 404
+
+    if function_config["input_type"] != "json":
+        return jsonify({"error": f"Unsupported input type {function_config['input_type']}"}), 400
+
+    data = request.json
+    parameters = {k: data[k] for k in function_config["parameters"]["properties"].keys() if k in data}
+
+    result = model_manager.infer(parameters)
+    if result:
+        return app.response_class(result, content_type=function_config["return_type"])
+    else:
+        return jsonify({"error": "Error during inference"}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Generic exception handler
+    return jsonify(error=str(e)), 500
+
+# Start the Flask server in a new thread
+threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+
+# Set up Ngrok to create a tunnel to the Flask server
+public_url = ngrok.connect(5000).public_url
+
+function_names = [func['name'] for func in config["functions"]]
+
+print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+
+# Loop over function_names and print them
+for function_name in function_names:
+    time.sleep(5)
+    print(f'Endpoint here: {public_url}/{function_name}')
+
+BASE_URL = f"{public_url}"
+
+### BEGIN USER EDITABLE SECTION ###
+def setup_test():
+    response = requests.get(f"{BASE_URL}/setup")
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        return (True, response.json())  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
+
+def infer_test(query="What is Flash attention?"):
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "query": query
+    }
+    response = requests.post(f"{BASE_URL}/process_llm_response", headers=headers, json=data)
+    
+    if response.status_code == 200:
+        # Save the image to a file
+        print(response.content)
+        return (True, "got the result")  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
+
+### END USER EDITABLE SECTION ###
+
+# Testing
+result_setup = setup_test()
+print(result_setup)
+
+result_infer = infer_test()
+print(result_infer)
