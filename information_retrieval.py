@@ -1,23 +1,23 @@
 import os
 os.environ["FLASK_ENV"] = "development"
 
-# dependencies = [
-#     'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
-#     'pip install transformers',
-#     'pip -q install langchain',
-#     'pip install -q flask',
-#     'pip install pypdf',
-#     'pip install cython',
-#     'pip install sentence_transformers',
-#     'pip install chromadb',
-#     'pip install -U accelerate',
-#     'pip install -U sentencepiece',
-#     'pip install flask pyngrok',
-#     'pip install gdown'
-# ]
+dependencies = [
+    'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
+    'pip install transformers',
+    'pip -q install langchain',
+    'pip install -q flask',
+    'pip install pypdf',
+    'pip install cython',
+    'pip install sentence_transformers',
+    'pip install chromadb',
+    'pip install -U accelerate',
+    'pip install -U sentencepiece',
+    'pip install flask pyngrok',
+    'pip install gdown'
+]
 
-# for command in dependencies:
-#     os.system(command)
+for command in dependencies:
+    os.system(command)
 
 
 # ---------------------------------------------------
