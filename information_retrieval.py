@@ -79,7 +79,6 @@ from pyngrok import ngrok
 from flask import Flask, request, jsonify
 
 from transformers import pipeline
-from configurations.prompt_config import PROMPT_CONFIG
 
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import Chroma
