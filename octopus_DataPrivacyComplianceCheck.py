@@ -131,7 +131,7 @@ class ModelManager:
             ### BEGIN USER EDITABLE SECTION ###
             base_model = self.models['base_model']
             tokenizer = self.models['tokenizer']
-            inputs = tokenizer(f'Check for sensitive information: {parameters["value1"]}', return_tensors='pt').to('cuda')
+            inputs = tokenizer(f'Check for sensitive information: {parameters["value1"]}', return_tensors='pt').to(self.device)
             max_length = 512
             inputs_length = inputs.input_ids.shape[1]
             max_new_tokens_value = max_length - inputs_length
