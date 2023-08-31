@@ -233,12 +233,12 @@ app     = Flask(__name__)
 
 # startup the application
 # ---------------------------------------------------
-@app.route('/setup', methods=['GET'])
+@app.route('/v1/setup', methods=['POST'])
 def setup():
     model_manager.setup()
-    return jsonify({"status": "models loaded successfully"})
+    return jsonify({"status": "models loaded successfully", "setup": "Performed"}), 201
 
-@app.route('/<function_name>', methods=['POST'])
+@app.route('/v1/<function_name>', methods=['POST'])
 def generic_route(function_name):
     function_config = next((f for f in config["functions"] if f["name"] == function_name), None)
 
@@ -253,7 +253,7 @@ def generic_route(function_name):
 
     result = model_manager.infer(parameters)
     if result:
-        return app.response_class(result, content_type=function_config["return_type"])
+        return app.response_class(result, content_type=function_config["return_type"]), 201
     else:
         return jsonify({"error": "Error during inference"}), 500
 
@@ -263,53 +263,53 @@ def handle_exception(e):
     return jsonify(error=str(e)), 500
 
 # Start the Flask server in a new thread
-threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+#threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
-public_url = ngrok.connect(5000).public_url
+#public_url = ngrok.connect(5000).public_url
 
-function_names = [func['name'] for func in config["functions"]]
+#function_names = [func['name'] for func in config["functions"]]
 
-print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
-for function_name in function_names:
-    time.sleep(5)
-    print(f'Endpoint here: {public_url}/{function_name}')
+#for function_name in function_names:
+#    time.sleep(5)
+#    print(f'Endpoint here: {public_url}/{function_name}')
 
-BASE_URL = f"{public_url}"
+#BASE_URL = f"{public_url}"
 
 ### BEGIN USER EDITABLE SECTION ###
-def setup_test():
-    response = requests.get(f"{BASE_URL}/setup")
+#def setup_test():
+#    response = requests.get(f"{BASE_URL}/setup")
     
     # Check if the request was successful
-    if response.status_code == 200:
-        return (True, response.json())  # True indicates success
-    else:
-        return (False, response.json())  # False indicates an error
+#    if response.status_code == 200:
+#        return (True, response.json())  # True indicates success
+#    else:
+#        return (False, response.json())  # False indicates an error
 
-def infer_test(query="What is Flash attention?"):
-    headers = {
-        "Content-Type": "application/json"
-    }
-    data = {
-        "query": query
-    }
-    response = requests.post(f"{BASE_URL}/process_llm_response", headers=headers, json=data)
+#def infer_test(query="What is Flash attention?"):
+#    headers = {
+#        "Content-Type": "application/json"
+#    }
+#    data = {
+#        "query": query
+#    }
+#    response = requests.post(f"{BASE_URL}/process_llm_response", headers=headers, json=data)
     
-    if response.status_code == 200:
+#    if response.status_code == 200:
         # Save the image to a file
-        print(response.content)
-        return (True, "got the result")  # True indicates success
-    else:
-        return (False, response.json())  # False indicates an error
+#        print(response.content)
+#        return (True, "got the result")  # True indicates success
+#    else:
+#        return (False, response.json())  # False indicates an error
 
 ### END USER EDITABLE SECTION ###
 
 # Testing
-result_setup = setup_test()
-print(result_setup)
+#result_setup = setup_test()
+#print(result_setup)
 
-result_infer = infer_test()
-print(result_infer)
+#result_infer = infer_test()
+#print(result_infer)
