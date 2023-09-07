@@ -8,6 +8,7 @@ Original file is located at
 """
 
 import os
+import argparse
 
 ### BEGIN USER EDITABLE SECTION ###
 dependencies = [
@@ -24,7 +25,7 @@ for command in dependencies:
 import gdown
 
 bpy_url = "https://drive.google.com/u/0/uc?id=1UNPCJVp-UrisPbQMAsVHhTQz92qTW86f&export=download"
-bpy_package = "bpy.whl"
+bpy_package = "bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl"
 gdown.download(bpy_url, bpy_package, quiet=False)
 os.system("pip install bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl")
 
@@ -108,7 +109,7 @@ import math
 import mathutils
 
 class BlenderModelManager:
-    def __init__(self, key, name, token, gpu_name = 'NVIDIA GeForce RTX 4090'):
+    def __init__(self, key, name, token, gpu_index = 0):
         extension = key.split(".")[-1]
         file_name = f"{name}.{extension}"
         gdown.download(token, output=file_name, quiet=False)
@@ -116,7 +117,7 @@ class BlenderModelManager:
         bpy.ops.wm.open_mainfile(filepath=file_name)
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'OPTIX'
         bpy.context.preferences.addons['cycles'].preferences.refresh_devices()
-        bpy.context.preferences.addons['cycles'].preferences.devices[gpu_name].use = True
+        bpy.context.preferences.addons['cycles'].preferences.devices[gpu_index].use = True
         bpy.context.scene.cycles.device = 'GPU'
 
         self.orbit_camera_object = bpy.data.objects.get("Orbit_camera")
@@ -131,8 +132,10 @@ class BlenderModelManager:
     
     def find_part_inference(self, part_name, resolution, output_filename, clip=False):
         self._find_part(self.part_camera_object, part_name,clip)
+        self._change_object_material(part_name, "highlighter")
         self._generate_image(self.part_camera_object, resolution, output_filename)
-
+        bpy.app.handlers.render_post.append(self._restore_object_material(part_name))
+        
     def _orbit(self, position:int, tilt, zoom):
         self._change_tilt(tilt)
         self._change_zoom(zoom)
@@ -210,15 +213,13 @@ class BlenderModelManager:
             print(f"Object with name '{object_name}' not found.")
             return None
 
-    def _set_camera_clip(self, camera_name, near_clip):
+    def _set_camera_clip(self, camera, near_clip):
         # Find the camera by name
-        camera = bpy.data.cameras.get(camera_name)
-
         if camera is not None:
             # Set the near and far clip values
-            camera.clip_start = near_clip
+            camera.data.clip_start = near_clip
         else:
-            print(f"Camera with name '{camera_name}' not found.")
+            print(f"Camera for clip manipulation not found.")
 
     def _copy_object_center_to_camera(self, object_name, camera):
         # Find the object by name
@@ -238,8 +239,8 @@ class BlenderModelManager:
             #Calculate focal length to keep the object in the frame
             sensor_width = camera.data.sensor_width/1000
             sensor_height = camera.data.sensor_height/1000
-            object_width = target_object.dimensions.x
-            object_height = target_object.dimensions.z
+            object_width = target_object.dimensions.x * 3
+            object_height = target_object.dimensions.z * 3
             desired_focal_length_width = ((distance_to_object*sensor_width) / object_width) * 1000
             desired_focal_length_height = ((distance_to_object*sensor_height) / object_height) * 1000
 
@@ -260,6 +261,33 @@ class BlenderModelManager:
             return distance_to_object
         else:
             print("Wrong names given for part or camera")
+    
+    def _change_object_material(self, object_name, new_material_name):
+        # Find the object by name
+        selected_object = bpy.data.objects.get(object_name)
+        if selected_object:
+            # Store the initial material(s) of the object
+            self.initial_materials = selected_object.data.materials[:]
+
+            # Get an existing material by its name
+            existing_material = bpy.data.materials.get(new_material_name)
+
+            if existing_material:
+                # Assign the existing material to the object
+                selected_object.data.materials[0] = existing_material  # Replace the first material slot
+                selected_object.data.update()
+        else:
+            print("Object for highlithing not found.")
+    
+    def _restore_object_material(self, object_name):
+        # Restore the initial materials (assuming the number of material slots matches)
+        selected_object = bpy.data.objects.get(object_name)
+        for i, material in enumerate(self.initial_materials):
+            selected_object.data.materials[i] = material
+
+        # Update the object to reflect the material changes
+        selected_object.data.update()
+            
 try:
     import google.colab
     # Change to /content directory
@@ -301,7 +329,8 @@ class ModelManager:
             model_access_token = model_info["access_token"]
             try:
                 ### BEGIN USER EDITABLE SECTION ###
-                model = BlenderModelManager(model_key,model_name, model_access_token)
+                gpu_index = self._get_gpu()
+                model = BlenderModelManager(model_key,model_name, model_access_token, gpu_index)
                 self.models[model_name] = model
                 ### END USER EDITABLE SECTION ###
             except Exception as e:
@@ -342,7 +371,23 @@ class ModelManager:
         except Exception as e:
             print(f"Error during inference: {e}")
             return None
+    
+    def _get_gpu(self):
+        min_cuda_key = None
+        min_cuda_value = float('inf')  # Initialize with positive infinity
 
+        for key, value in config["device_map"].items():
+            if key.startswith("cuda:") and "GiB" in value:
+                memory_value = float(value.replace("GiB", ""))
+                if memory_value > 4.0 and memory_value < min_cuda_value:
+                    min_cuda_key = key
+                    min_cuda_value = memory_value
+        if min_cuda_key:
+            print(f"CUDA with the smallest value above 4GB: {min_cuda_key}")
+            print(f"Memory value: {min_cuda_value}GiB")
+            return int(min_cuda_key.split(":")[-1])
+        else:
+            raise Exception("No CUDA found with a value above 4GB.")
 
 model_manager = ModelManager(config)
 
@@ -400,12 +445,16 @@ def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
 
-import threading
 from pyngrok import ngrok
 import time
 
-# Start the Flask server in a new thread
-app.run(threaded=False)
+parser = argparse.ArgumentParser(description="Service using blender to generate images for chat gpt")
+parser.add_argument('--host', type=str, default="127.0.0.1",help='set the host for service')
+parser.add_argument('--port', type=int, default = "5000", help="set the port for the service")
+args = parser.parse_args()
+
+# Start the Flask server in single threaded mode
+app.run(host = args.host, port = args.port, threaded=False)
 
 # Set up Ngrok to create a tunnel to the Flask server
 public_url = "http://127.0.0.1:5002"
@@ -420,4 +469,3 @@ print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 for function_name in function_names:
    time.sleep(5)
    print(f'Endpoint here: {public_url}/{function_name}')
-
