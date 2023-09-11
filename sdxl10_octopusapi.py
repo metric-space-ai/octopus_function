@@ -49,7 +49,7 @@ config_str = '''
     "functions": [
         {
             "name": "text-to-image",
-            "description": "Generates an image based on a positive and negative prompt",
+            "description": "Generates an image with SDXL based on a positive and negative prompt to describe what should be on the image and what not",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -166,65 +166,66 @@ def generic_route(function_name):
 def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
-
-#import threading
-#from pyngrok import ngrok
-#import time
+'''
+import threading
+from pyngrok import ngrok
+import time
 
 # Start the Flask server in a new thread
-#threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
-#public_url = ngrok.connect(5000).public_url
+public_url = ngrok.connect(5000).public_url
 
-#function_names = [func['name'] for func in config["functions"]]
+function_names = [func['name'] for func in config["functions"]]
 
-#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
-#for function_name in function_names:
-#    time.sleep(5)
-#    print(f'Endpoint here: {public_url}/{function_name}')
+for function_name in function_names:
+    time.sleep(5)
+    print(f'Endpoint here: {public_url}/{function_name}')
 
-#import requests
+import requests
 
-#BASE_URL = f"{public_url}"
+BASE_URL = f"{public_url}"
 
 
 ### BEGIN USER EDITABLE SECTION ###
-#def setup_test():
-#    response = requests.get(f"{BASE_URL}/setup")
+def setup_test():
+    response = requests.get(f"{BASE_URL}/setup")
     
     # Check if the request was successful
-#    if response.status_code == 200:
-#        return (True, response.json())  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+    if response.status_code == 200:
+        return (True, response.json())  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 
-#def infer_test(positive_prompt="a cyberpunk logo with a brain", negative_prompt="bad quality"):
-#    headers = {
-#        "Content-Type": "application/json"
-#    }
-#    data = {
-#        "value1": positive_prompt,
-#        "value2": negative_prompt
-#    }
-#    response = requests.post(f"{BASE_URL}/text-to-image", headers=headers, json=data)
+def infer_test(positive_prompt="a cyberpunk logo with a brain", negative_prompt="bad quality"):
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "value1": positive_prompt,
+        "value2": negative_prompt
+    }
+    response = requests.post(f"{BASE_URL}/text-to-image", headers=headers, json=data)
     
-#    if response.status_code == 200:
+    if response.status_code == 200:
         # Save the image to a file
-#        with open("output_image.jpeg", "wb") as img_file:
-#            img_file.write(response.content)
-#        print("Image saved as output_image.jpeg!")
-#        return (True, "Image saved successfully!")  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+        with open("output_image.jpeg", "wb") as img_file:
+            img_file.write(response.content)
+        print("Image saved as output_image.jpeg!")
+        return (True, "Image saved successfully!")  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 
 ### END USER EDITABLE SECTION ###
 
 # Testing
-#result_setup = setup_test()
-#print(result_setup)
+result_setup = setup_test()
+print(result_setup)
 
-#result_infer = infer_test()
-#print(result_infer)
+result_infer = infer_test()
+print(result_infer)
+'''
