@@ -120,10 +120,10 @@ class ModelManager:
             base_model = self.models["base_model"]
             refiner_model = self.models["refiner_model"]
 
-            images = base_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], guidance_scale=0.5, num_inference_steps=50).images
+            images = base_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], num_inference_steps=50).images
             torch.cuda.empty_cache() if self.device != "cpu" else None
 
-            images = refiner_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], image=images, num_inference_steps=50, strength=0.3).images
+            images = refiner_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], image=images, num_inference_steps=50).images
             torch.cuda.empty_cache() if self.device != "cpu" else None
 
             if config["functions"][0]["return_type"] == "image/jpeg":
