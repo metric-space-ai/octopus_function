@@ -30,7 +30,7 @@ gdown.download(bpy_url, bpy_package, quiet=False)
 os.system("pip install bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl")
 
 config_str = '''
-{
+ {
     "device_map": {
      "cuda:1": "10GiB",
      "cpu": "30GiB"
@@ -118,6 +118,7 @@ class BlenderModelManager:
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
         bpy.context.preferences.addons['cycles'].preferences.refresh_devices()
         bpy.context.preferences.addons['cycles'].preferences.devices[gpu_index].use = True
+        print(f"Using GPU:{gpu_index} for Blender rendering")
         bpy.context.scene.cycles.device = 'GPU'
 
         self.orbit_camera_object = bpy.data.objects.get("Orbit_camera")
@@ -126,15 +127,16 @@ class BlenderModelManager:
 
         print("Blender model loaded")
     
-    def orbit_inference(self, position, tilt, zoom, resolution, output_filename):
+    def orbit_inference(self, output_filename, position, tilt = "center", zoom ="middle", resolution = "full-hd"):
         self._orbit(position, tilt, zoom)
         self._generate_image(self.orbit_camera_object, resolution, output_filename)
     
-    def find_part_inference(self, part_name, resolution, output_filename, clip=False):
-        self._find_part(self.part_camera_object, part_name,clip)
+    def find_part_inference(self, output_filename, part_name, resolution = "full-hd", clip=False):
+        self._find_part(self.part_camera_object, part_name, clip)
         self._change_object_material(part_name, "highlighter")
         self._generate_image(self.part_camera_object, resolution, output_filename)
-        bpy.app.handlers.render_post.append(self._restore_object_material(part_name))
+        #bpy.app.handlers.render_post.append(self._restore_object_material(part_name))
+        self._restore_object_material(part_name)
         
     def _orbit(self, position:int, tilt, zoom):
         self._change_tilt(tilt)
@@ -143,7 +145,7 @@ class BlenderModelManager:
     
     def _find_part(self,camera, part_name, clip):
         distance = self._copy_object_center_to_camera(part_name, camera)
-        if clip == True:
+        if clip is True:
             self._set_camera_clip(camera, distance * 0.9)
         else:
             self._set_camera_clip(camera, 0.1)
@@ -201,66 +203,59 @@ class BlenderModelManager:
         # Find the object by name
         target_object = bpy.data.objects.get(object_name)
 
-        if target_object is not None:
-            # Get the object's bounding box
-            bbox = [target_object.matrix_world @ v.co for v in target_object.data.vertices]
+        assert target_object is not None, "Object given for geometry center does not exist"
+        # Get the object's bounding box
+        bbox = [target_object.matrix_world @ v.co for v in target_object.data.vertices]
 
-            # Calculate the geometric center
-            geometric_center = sum(bbox, mathutils.Vector()) / len(bbox)
+        # Calculate the geometric center
+        geometric_center = sum(bbox, mathutils.Vector()) / len(bbox)
 
-            return geometric_center
-        else:
-            print(f"Object with name '{object_name}' not found.")
-            return None
+        return geometric_center
 
     def _set_camera_clip(self, camera, near_clip):
-        # Find the camera by name
-        if camera is not None:
-            # Set the near and far clip values
-            camera.data.clip_start = near_clip
-        else:
-            print(f"Camera for clip manipulation not found.")
+        assert camera and camera.type == "CAMERA", "given object for clip manipulation is not a camera object"
+        # Set the near and far clip values
+        camera.data.clip_start = near_clip
 
     def _copy_object_center_to_camera(self, object_name, camera):
         # Find the object by name
         target_object = bpy.data.objects.get(object_name)
 
-        if target_object is not None and camera is not None:
-            # Get the X coordinate of the object's center
-            coordinate = self._find_geometric_center(object_name)
-            x_coordinate = coordinate.x
+        assert target_object is not None, "Part name given does not exist in Blender file"
 
-            # Set the camera's X coordinate of location
-            camera.location.x = x_coordinate
+        # Get the X coordinate of the object's center
+        coordinate = self._find_geometric_center(object_name)
+        x_coordinate = coordinate.x
 
-            # Calculate the camera's distance to the object's center
-            distance_to_object = (camera.location - coordinate).length
+        # Set the camera's X coordinate of location
+        camera.location.x = x_coordinate
 
-            #Calculate focal length to keep the object in the frame
-            sensor_width = camera.data.sensor_width/1000
-            sensor_height = camera.data.sensor_height/1000
-            object_width = target_object.dimensions.x * 3
-            object_height = target_object.dimensions.z * 3
-            desired_focal_length_width = ((distance_to_object*sensor_width) / object_width) * 1000
-            desired_focal_length_height = ((distance_to_object*sensor_height) / object_height) * 1000
+        # Calculate the camera's distance to the object's center
+        distance_to_object = (camera.location - coordinate).length
 
-            # Use the smaller of the two focal lengths to ensure the entire object fits in the frame
-            desired_focal_length = min(desired_focal_length_width, desired_focal_length_height)
+        #Calculate focal length to keep the object in the frame
+        sensor_width = camera.data.sensor_width/1000
+        sensor_height = camera.data.sensor_height/1000
+        object_width = target_object.dimensions.x * 3
+        object_height = target_object.dimensions.z * 3
+        desired_focal_length_width = ((distance_to_object*sensor_width) / object_width) * 1000
+        desired_focal_length_height = ((distance_to_object*sensor_height) / object_height) * 1000
 
-            # Set the camera's focal length
-            camera.data.lens = desired_focal_length
+        # Use the smaller of the two focal lengths to ensure the entire object fits in the frame
+        desired_focal_length = min(desired_focal_length_width, desired_focal_length_height)
 
-            #tilt the camera to look at the object
-            direction_to_target = coordinate - camera.location
-            tilt_angle = math.atan2(direction_to_target.z, direction_to_target.y)
-            camera.rotation_euler.x= tilt_angle+math.radians(90)
+        # Set the camera's focal length
+        camera.data.lens = desired_focal_length
 
-            # Update the scene to refresh the camera view
-            bpy.context.view_layer.update()
+        #tilt the camera to look at the object
+        direction_to_target = coordinate - camera.location
+        tilt_angle = math.atan2(direction_to_target.z, direction_to_target.y)
+        camera.rotation_euler.x= tilt_angle+math.radians(90)
 
-            return distance_to_object
-        else:
-            print("Wrong names given for part or camera")
+        # Update the scene to refresh the camera view
+        bpy.context.view_layer.update()
+
+        return distance_to_object
     
     def _change_object_material(self, object_name, new_material_name):
         # Find the object by name
@@ -343,7 +338,7 @@ class ModelManager:
             blender_model = self.models["blender_model"]
 
             print("orbit-inference")
-            blender_model.orbit_inference(parameters['position'], parameters['tilt'], parameters['zoom'], parameters['resolution'], output_filename)
+            blender_model.orbit_inference(output_filename, position=parameters.get('position'), tilt=parameters.get('tilt', "center"), zoom=parameters.get('zoom', "middle"), resolution=parameters.get('resolution', "full-hd"))
 
             while os.path.exists(output_filename+".png") == False:
                 time.sleep(5)
@@ -361,7 +356,7 @@ class ModelManager:
             blender_model = self.models["blender_model"]
 
             print("part-inference")
-            blender_model.find_part_inference(parameters['part'], parameters['resolution'], output_filename, parameters['clip'])
+            blender_model.find_part_inference(output_filename, part_name=parameters.get('part'), resolution=parameters.get('resolution', "full-hd"), clip=parameters.get('clip', False))
 
             while os.path.exists(output_filename+".png") == False:
                 time.sleep(5)
@@ -375,15 +370,17 @@ class ModelManager:
     def _get_gpu(self):
         min_cuda_key = None
         min_cuda_value = float('inf')  # Initialize with positive infinity
+        
+        required_memory_gb = 6.0
 
         for key, value in config["device_map"].items():
             if key.startswith("cuda:") and "GiB" in value:
                 memory_value = float(value.replace("GiB", ""))
-                if memory_value > 4.0 and memory_value < min_cuda_value:
+                if memory_value > required_memory_gb and memory_value < min_cuda_value:
                     min_cuda_key = key
                     min_cuda_value = memory_value
         if min_cuda_key:
-            print(f"CUDA with the smallest value above 4GB: {min_cuda_key}")
+            print(f"CUDA with the smallest value above {required_memory_gb}GB: {min_cuda_key}")
             print(f"Memory value: {min_cuda_value}GiB")
             return int(min_cuda_key.split(":")[-1])
         else:
