@@ -5,10 +5,11 @@ from flask import Flask, jsonify, request
 app = Flask(__name__)
 
 ### Configuration section
-config = '''{
+config = """{
     "device_map": {
-        "device": "cpu",
-        "max_memory": {"0": "10GiB", "1": "10GiB", "cpu": "30GiB"}
+        "cuda:0": "10GiB",
+        "cuda:1": "10GiB",
+        "cpu": "30GiB"
     },
     "model_setup": {
         "file": "model.dat",
@@ -17,8 +18,7 @@ config = '''{
     },
     "functions": [
         {
-            "name": "function_foo_sync",
-            "url_part": "function-foo-sync",
+            "name": "function-foo-sync",
             "description": "Synchronous communication test function",
             "parameters": {
                 "type": "object",
@@ -27,16 +27,18 @@ config = '''{
                     "value2": { "type": "string", "enum": ["abc", "def"], "description": "Second value" }
                 },
                 "required": ["value1", "value2"]
-            }
+            },
+            "input_type": "json",
+            "return_type": "application/json"
         }
-    ]}'''
+    ]}"""
 config = json.loads(config)
 
 ### AI function section
 file = config["model_setup"]["file"]
 model = None
 
-@app.route("/v1/{url_part}".format(url_part = config["functions"][0]["url_part"]), methods=["POST"])
+@app.route("/function-foo-sync", methods=["POST"])
 def function_foo_sync():
 # Start editing here
     data = request.json
@@ -68,7 +70,7 @@ def function_foo_sync():
     return jsonify(response), 201
 # Finish editing here
 
-@app.route("/v1/setup", methods=["POST"])
+@app.route("/setup", methods=["POST"])
 def setup():
 # Start editing here
     global model
