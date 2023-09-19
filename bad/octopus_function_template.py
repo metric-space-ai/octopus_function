@@ -38,11 +38,6 @@ config = json.loads(config)
 file = config["model_setup"]["file"]
 model = None
 
-@app.errorhandler(Exception)
-def handle_exception(e):
-    # Generic exception handler
-    return jsonify(error=str(e)), 500
-
 @app.route("/function-foo-sync", methods=["POST"])
 def function_foo_sync():
 # Start editing here
@@ -93,12 +88,3 @@ def setup():
     return {
         "setup": "Performed"
     }, 201
-
-import argparse, daemon
-parser = argparse.ArgumentParser(description="AI Service")
-parser.add_argument('--host', type=str, default="127.0.0.1", help='set the host for service')
-parser.add_argument('--port', type=int, default = "5000", help="set the port for the service")
-args = parser.parse_args()
-
-with daemon.DaemonContext(working_directory="/services"):
-    app.run(host = args.host, port = args.port, threaded=False)
