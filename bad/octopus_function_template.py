@@ -46,25 +46,10 @@ def function_foo_sync():
     value1 = data.get("value1", "")
     value2 = data.get("value2", "")
 
-    id = str(uuid.uuid4())
-    status = "Processed"
     response_text = "Some sync response text " + value1 + " " + value2
 
-    content = str(base64.b64encode(b"test of generated content"))
-    file_attachement = {
-        "content": content,
-        "file_name": "test.txt",
-        "media_type": "text/plain",
-    }
-    file_attachements = list()
-    file_attachements.append(file_attachement)
-
     response = {
-        "id": id,
-        "progress": 100,
-        "status": status,
-        "response": os.getcwd(),
-        "file_attachements": file_attachements
+        "response": response_text,
     }
 
     return jsonify(response), 201
@@ -85,6 +70,10 @@ def setup():
     if model == None:
         model = True
 # Finish editing here
-    return {
+    response = {
         "setup": "Performed"
-    }, 201
+    }
+
+    return jsonify(response), 201
+
+# This should not be in the final template
