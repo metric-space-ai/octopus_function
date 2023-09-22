@@ -1,23 +1,23 @@
 import os
 os.environ["FLASK_ENV"] = "development"
 
-dependencies = [
-    'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
-    'pip install transformers',
-    'pip -q install langchain',
-    'pip install -q flask',
-    'pip install pypdf',
-    'pip install cython',
-    'pip install sentence_transformers',
-    'pip install chromadb',
-    'pip install -U accelerate',
-    'pip install -U sentencepiece',
-    'pip install flask pyngrok',
-    'pip install gdown'
-]
+# dependencies = [
+#     'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
+#     'pip install transformers',
+#     'pip -q install langchain',
+#     'pip install -q flask',
+#     'pip install pypdf',
+#     'pip install cython',
+#     'pip install sentence_transformers',
+#     'pip install chromadb',
+#     'pip install -U accelerate',
+#     'pip install -U sentencepiece',
+#     'pip install flask pyngrok',
+#     'pip install gdown'
+# ]
 
-for command in dependencies:
-    os.system(command)
+# for command in dependencies:
+#     os.system(command)
 
 
 # ---------------------------------------------------
@@ -32,6 +32,11 @@ config_str = '''
     },
     "models": [
         {
+            "key": "information_source.zip",
+            "name": "information_source",
+            "access_token": "https://drive.google.com/uc?id=1O5gQKwcYA_7JzQr8JmhmonVwTov_cWlL"
+        },
+        {
             "key": "BAAI/bge-small-en",
             "name": "embeddings_model",
             "access_token": "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"
@@ -41,20 +46,21 @@ config_str = '''
             "name": "llama_model",
             "access_token": "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"
         }
+
     ],
     "functions": [
         {
-            "name": "process_llm_response",
-            "description": "When user queries something, the AI first search into the chroma database to search for answers",
+            "name": "QueryContent",
+            "description": "When a user queries something, the AI first search into the chroma database to search for answers",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
+                    "prompt": {
                         "type": "string",
                         "description": "Answer to the query to search from the database"
                     }
                 },
-                "required": ["query"]
+                "required": ["prompt"]
             },
             "input_type": "json",
             "return_type": "application/json"
@@ -113,20 +119,19 @@ class PROMPT_CONFIG:
         self.prompt_template =  self.B_INST + SYSTEM_PROMPT + self.INSTRUCTION + self.E_INST
 
         llama_prompt = PromptTemplate(template=self.prompt_template, input_variables=["context", "question"])
-        self.chain_type_kwargs = {"prompt": llama_prompt}  
-
-        pdf_path = 'data'
-        os.makedirs(pdf_path, exist_ok=True)
-        self.zip_path = 'data/new_papers.zip'
-        self.unzip_path = 'data'
-        self.gdrive_token = 'https://drive.google.com/uc?id=1O5gQKwcYA_7JzQr8JmhmonVwTov_cWlL'
+        self.chain_type_kwargs = {"prompt": llama_prompt}
 
 constants = PROMPT_CONFIG()
 
-gdown.download(constants.gdrive_token, output=constants.zip_path, quiet=False, fuzzy=True)
-with zipfile.ZipFile(constants.zip_path, 'r') as zip_ref:
-    # Extract all contents to the target directory
-    zip_ref.extractall(constants.unzip_path)
+class DataManager:
+    def __init__(self, key, name, token):
+        extension = key.split(".")[-1]
+        self.file = f"{name}.{extension}"
+        gdown.download(token, output=self.file, quiet=False, fuzzy=True)
+
+        #extract file
+        with zipfile.ZipFile(self.file, 'r') as zip_ref:
+            zip_ref.extractall(name)
 
 # ---------------------------------------------------
 # chat completion functions
@@ -157,7 +162,7 @@ def process_llm_response(llm_response):
 # ---------------------------------------------------
 # create the model manager class
 # ---------------------------------------------------
-class QueryModelManager:
+class ModelManager:
     def __init__(self, config):
         self.config = config
         self.models = {}
@@ -176,10 +181,13 @@ class QueryModelManager:
 
         # form the model in sync for the query retrieval
         for model_info in self.config["models"]:
+
+            if model_info["name"] == 'information_source':
+                DataManager(model_info["key"], model_info["name"], model_info["access_token"])
             
             # get the embeddings model to embed the pdfs in the folder
             if model_info["name"] == 'embeddings_model':
-                loader      = DirectoryLoader('data/', glob="./*.pdf", recursive=True, loader_cls=PyPDFLoader)
+                loader      = DirectoryLoader(f"{self.config['models'][0]['name']}", glob="./*.pdf", recursive=True, loader_cls=PyPDFLoader)
                 documents   = loader.load()
 
                 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -196,7 +204,7 @@ class QueryModelManager:
                 self.models[model_info["name"]] = retriever
 
             elif model_info['name'] == 'llama_model':
-                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device=-1, token='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')
+                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device=int(self.select_device()[-1]), token=model_info["access_token"])
                 llm  = HuggingFacePipeline(pipeline=pipe)
 
                 qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.models['embeddings_model'], chain_type_kwargs=constants.chain_type_kwargs, return_source_documents=True)
@@ -210,7 +218,7 @@ class QueryModelManager:
             ### BEGIN USER EDITABLE SECTION ###
             query_model = self.models["llama_model"]
             
-            llm_response = query_model(parameters['query'])
+            llm_response = query_model(parameters['prompt'])
             torch.cuda.empty_cache() if self.device != "cpu" else None
 
             return llm_response
@@ -223,7 +231,7 @@ class QueryModelManager:
 # load configurations for the program block
 # ---------------------------------------------------
 config          = json.loads(config_str)
-model_manager   = QueryModelManager(config)
+model_manager   = ModelManager(config)
 
 # ---------------------------------------------------
 # make the ap and the corresponding function
@@ -233,12 +241,12 @@ app     = Flask(__name__)
 
 # startup the application
 # ---------------------------------------------------
-@app.route('/v1/setup', methods=['POST'])
+@app.route('/setup', methods=['GET'])
 def setup():
     model_manager.setup()
-    return jsonify({"status": "models loaded successfully", "setup": "Performed"}), 201
+    return jsonify({"status": "models loaded successfully"})
 
-@app.route('/v1/<function_name>', methods=['POST'])
+@app.route('/<function_name>', methods=['POST'])
 def generic_route(function_name):
     function_config = next((f for f in config["functions"] if f["name"] == function_name), None)
 
@@ -253,7 +261,7 @@ def generic_route(function_name):
 
     result = model_manager.infer(parameters)
     if result:
-        return app.response_class(result, content_type=function_config["return_type"]), 201
+        return app.response_class(result, content_type=function_config["return_type"])
     else:
         return jsonify({"error": "Error during inference"}), 500
 
@@ -262,54 +270,114 @@ def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
 
+
 # Start the Flask server in a new thread
-#threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+
+threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
-#public_url = ngrok.connect(5000).public_url
 
-#function_names = [func['name'] for func in config["functions"]]
-
-#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+public_url = ngrok.connect(5000).public_url
+function_names = [func['name'] for func in config["functions"]]
+print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
-#for function_name in function_names:
-#    time.sleep(5)
-#    print(f'Endpoint here: {public_url}/{function_name}')
 
-#BASE_URL = f"{public_url}"
+for function_name in function_names:
+
+    time.sleep(5)
+
+    print(f'Endpoint here: {public_url}/{function_name}')
+
+BASE_URL = f"{public_url}"
 
 ### BEGIN USER EDITABLE SECTION ###
-#def setup_test():
-#    response = requests.get(f"{BASE_URL}/setup")
-    
-    # Check if the request was successful
-#    if response.status_code == 200:
-#        return (True, response.json())  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
 
-#def infer_test(query="What is Flash attention?"):
-#    headers = {
-#        "Content-Type": "application/json"
-#    }
-#    data = {
-#        "query": query
-#    }
-#    response = requests.post(f"{BASE_URL}/process_llm_response", headers=headers, json=data)
-    
-#    if response.status_code == 200:
+def setup_test():
+
+    response = requests.get(f"{BASE_URL}/setup")
+    # Check if the request was successful
+    if response.status_code == 200:
+
+        return (True, response.json())  # True indicates success
+
+    else:
+
+        return (False, response.json())  # False indicates an error
+
+def infer_test(prompt="which city is this?"):
+
+    # create prompt
+    prompt = "Question: " + prompt + " Answer:"
+
+    headers = {
+
+        "Content-Type": "application/json"
+
+    }
+
+    data = {
+        "prompt": prompt
+    }
+
+    response = requests.post(f"{BASE_URL}/QueryContent", headers=headers, json=data)
+
+    if response.status_code == 200:
         # Save the image to a file
-#        print(response.content)
-#        return (True, "got the result")  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+
+        with open("output_text.txt", "wb") as file:
+
+            file.write(response.content)
+
+        print("Answer saved as output_text.txt!")
+
+        return (True, response.content)  # True indicates success
+
+    else:
+
+        return (False, response.json())  # False indicates an error
+
+
+def infer_test_url(prompt="which city is this?"):
+
+    # create promt
+
+    prompt = "Question: " + prompt + " Answer:"
+
+    headers = {
+
+        "Content-Type": "application/json"
+
+    }
+
+    data = {
+
+        "prompt": prompt
+
+    }
+
+    response = requests.post(f"{BASE_URL}/QueryContent", headers=headers, json=data)
+    if response.status_code == 200:
+        with open("output_text.txt", "wb") as file:
+            file.write(response.content)
+
+        print("Answer saved as output_text.txt!")
+
+        return (True, response.content)  # True indicates success
+
+    else:
+
+        return (False, response.json())  # False indicates an error
 
 ### END USER EDITABLE SECTION ###
 
 # Testing
-#result_setup = setup_test()
-#print(result_setup)
 
-#result_infer = infer_test()
-#print(result_infer)
+result_setup = setup_test()
+result_infer = infer_test()
+
+print(result_infer)
+
+result_infer_url = infer_test_url("What are the best retrieval augmentations for LLMs?")
+
+print(result_infer_url)
