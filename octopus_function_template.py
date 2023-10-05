@@ -1,4 +1,14 @@
-import base64, json, os, uuid
+import os
+
+dependencies = [
+    "pip install -q flask",
+    "pip install -q uuid",
+]
+
+for command in dependencies:
+    os.system(command)
+
+import base64, json, uuid
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
 
