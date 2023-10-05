@@ -41,6 +41,7 @@ model = None
 @app.route("/function-foo-sync", methods=["POST"])
 def function_foo_sync():
 # Start editing here
+    print(f"function-foo-sync called")
     data = request.json
     device_map = data.get("device_map", "")
     value1 = data.get("value1", "")
@@ -58,6 +59,7 @@ def function_foo_sync():
 @app.route("/setup", methods=["POST"])
 def setup():
 # Start editing here
+    print(f"setup called")
     global model
     data = request.json
     force_setup = data.get("force_setup", False)

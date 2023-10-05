@@ -31,7 +31,6 @@ config_str = '''{
     "functions": [
         {
             "name": "function_translator",
-            "url_part": "function-translator",
             "description": "Translator function",
             "parameters": {
                 "type": "object",
@@ -133,8 +132,8 @@ def translation(model_name, selection_mode, source, target, text):
 ### END USER EDITABLE SECTION ###
 
 ### AI service section
-@app.route("/v1/{url_part}".format(url_part = config["functions"][0]["url_part"]), methods=["POST"])
-def function_translator(): #TODO: don't use hard coded name here.
+@app.route('/v1/<function_name>', methods=['POST'])
+def generic_route(function_name):
 ### BEGIN USER EDITABLE SECTION ###
     function_config = config["functions"][0]
 
