@@ -22,6 +22,7 @@ config_str = '''{
         "cuda:1": "10GiB",
         "cpu": "30GiB"
     },
+    "required_python_version": "cp311",
     "model_setup": {
         "file": "lid218e.bin",
         "url": "https://dl.fbaipublicfiles.com/nllb/lid/lid218e.bin",

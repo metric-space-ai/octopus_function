@@ -28,6 +28,7 @@ config_str = """
         "cuda:1": "10GiB",
         "cpu": "30GiB"
     },
+    "required_python_version": "cp311",
     "models": {
         "key": "metricspace/DataPrivacyComplianceCheck-3B-V0.9",
         "name": "base_model",

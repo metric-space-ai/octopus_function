@@ -36,6 +36,7 @@ config_str = '''
     "cuda:1": "10GiB",
     "cpu": "30GiB"
     },
+    "required_python_version": "cp311",
     "models": [
         {
             "key": "pretrain_flant5xl",

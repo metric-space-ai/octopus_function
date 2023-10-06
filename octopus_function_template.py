@@ -21,6 +21,7 @@ config = """{
         "cuda:1": "10GiB",
         "cpu": "30GiB"
     },
+    "required_python_version": "cp311",
     "model_setup": {
         "file": "model.dat",
         "model_call_name": "model3B",

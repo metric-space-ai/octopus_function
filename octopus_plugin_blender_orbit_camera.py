@@ -35,6 +35,7 @@ config_str = '''
      "cuda:1": "10GiB",
      "cpu": "30GiB"
      },
+     "required_python_version": "cp310",
      "models": [
          {
              "key": "10133_integration.blend",
