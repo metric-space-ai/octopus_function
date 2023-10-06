@@ -1,5 +1,4 @@
 import os
-import requests
 ### BEGIN USER EDITABLE SECTION ###
 os.system('pip install -q tqdm')
 from tqdm import tqdm
@@ -7,6 +6,7 @@ dependencies = [
     "pip install -q torch --index-url https://download.pytorch.org/whl/cu118",
     "pip install -q torchvision --index-url https://download.pytorch.org/whl/cu118",
     "pip install -q torchaudio --index-url https://download.pytorch.org/whl/cu118",
+    "pip install -q requests",
     "pip install -q python-dotenv",
     "pip install -q accelerate",
     "pip install -q transformers",
@@ -25,6 +25,7 @@ dependencies = [
 for command in tqdm(dependencies):
     os.system(command)
 
+import requests
 from diffusers import DiffusionPipeline
 import torch
 from lavis.models import load_model_and_preprocess
