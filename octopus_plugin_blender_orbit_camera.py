@@ -16,7 +16,7 @@ dependencies = [
     "pip install -q joblib",
     "pip install -q uuid",
     "pip install -q gdown",
-    "apt-get install -y libgl1-mesa-glx"
+    "apt-get install -y libgl1-mesa-glx libsm6 libxkbcommon-x11-0 libxi6"
 ]
 
 for command in dependencies:
