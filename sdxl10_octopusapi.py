@@ -34,6 +34,7 @@ config_str = '''
     "cuda:1": "10GiB",
     "cpu": "30GiB"
     },
+    "required_python_version": "cp311",
     "models": [
         {
             "key": "stabilityai/stable-diffusion-xl-base-1.0",
