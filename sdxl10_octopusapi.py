@@ -4,20 +4,21 @@ import os
 ### BEGIN USER EDITABLE SECTION ###
 
 dependencies = [
-    'pip install -q torch --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q torchvision --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q torchaudio --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q python-dotenv',
-    'pip install -q accelerate',
-    'pip install -q transformers',
-    'pip install -q invisible-watermark',
-    'pip install -q numpy>=1.17',
-    'pip install -q PyWavelets>=1.1.1',
-    'pip install -q opencv-python>=4.1.0.25',
-    'pip install -q safetensors',
-    'pip install -q xformers==0.0.20',
-    'pip install -q git+https://github.com/huggingface/diffusers.git',
-    'pip install -q flask pyngrok'
+    'pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118',
+    'pip install -q torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cu118',
+    'pip install -q torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118',
+    'pip install -q python-dotenv==1.0.0',
+    'pip install -q accelerate==0.23.0',
+    'pip install -q transformers==4.34.0',
+    'pip install -q invisible-watermark==0.2.0',
+    'pip install -q numpy==1.26.0',
+    'pip install -q PyWavelets==1.4.1',
+    'pip install -q opencv-python==4.8.1.78',
+    'pip install -q safetensors==0.4.0',
+    'pip install -q xformers==0.0.22',
+    'pip install -q diffusers==0.21.4',
+    'pip install -q flask==3.0.0',
+    'pip install -q pyngrok==7.0.0'
 ]
 
 for command in dependencies:
