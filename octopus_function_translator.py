@@ -4,12 +4,12 @@ import os
 ### BEGIN USER EDITABLE SECTION ###
 
 dependencies = [
-    'pip install -q Flask',
-    'pip install -q torch --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q requests',
-    'pip install -q transformers',
-    'pip install -q fasttext',
-    'pip install -q nltk',
+    'pip install -q Flask==3.0.0',
+    'pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118',
+    'pip install -q requests==2.31.0',
+    'pip install -q transformers==4.34.0',
+    'pip install -q fasttext==0.9.2',
+    'pip install -q nltk==3.8.1',
 ]
 
 for command in dependencies:
@@ -18,9 +18,10 @@ for command in dependencies:
 ### Configuration section
 config_str = '''{
     "device_map": {
-        "cuda:0": "10GiB",
-        "cuda:1": "10GiB",
-        "cpu": "30GiB"
+    "cuda:0": "15GiB",
+    "cuda:1": "15GiB",
+    "cuda:2": "15GiB",
+    "cuda:3": "15GiB"
     },
     "required_python_version": "cp311",
     "model_setup": {
@@ -58,6 +59,7 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import fasttext
 import nltk
 from nltk.tokenize import sent_tokenize
+import subprocess
 
 config = json.loads(config_str)
 app = Flask(__name__)
@@ -70,13 +72,30 @@ LID = None
 model_dict = None
 nltk_download = None
 
+def command_result_as_int(command):
+    return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
+
+def select_device_with_larger_free_memory(available_devices):
+    device = None
+    memory = 0
+
+    for available_device in available_devices:
+        id = available_device.split(":")
+        id = id[-1]
+        free_memory = command_result_as_int(f"nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader --id={id}")
+        if free_memory > memory:
+            memory = free_memory
+            device = available_device
+
+    return device if device else "cpu"
+
 def select_device():
     if not torch.cuda.is_available():
         return "cpu"
 
     device_map = config.get('device_map', {})
     available_devices = list(device_map.keys())
-    return available_devices[0] if available_devices else "cpu"
+    return select_device_with_larger_free_memory(available_devices)
 
 device = select_device()
 
