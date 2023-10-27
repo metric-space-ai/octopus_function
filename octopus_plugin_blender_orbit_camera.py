@@ -12,11 +12,12 @@ import argparse
 
 ### BEGIN USER EDITABLE SECTION ###
 dependencies = [
-    "pip install -q flask pyngrok",
-    "pip install -q joblib",
-    "pip install -q uuid",
-    "pip install -q gdown",
-    "apt-get install -y libgl1-mesa-glx libsm6 libxkbcommon-x11-0 libxi6"
+    "pip install -q flask==3.0.0",
+    "pip install -q pyngrok==7.0.0",
+    "pip install -q joblib==1.3.2",
+    "pip install -q uuid==1.30",
+    "pip install -q gdown==4.7.1",
+    "apt-get install -y libgl1-mesa-glx libsm6 libxkbcommon-x11-0 libxi6 libxxf86vm1"
 ]
 
 for command in dependencies:
