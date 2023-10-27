@@ -31,9 +31,10 @@ import torch
 config_str = '''
 {
    "device_map": {
-    "cuda:0": "10GiB",
-    "cuda:1": "10GiB",
-    "cpu": "30GiB"
+    "cuda:0": "15GiB",
+    "cuda:1": "15GiB",
+    "cuda:2": "15GiB",
+    "cuda:3": "15GiB"
     },
     "required_python_version": "cp311",
     "models": [
@@ -78,7 +79,7 @@ import json
 import base64
 from io import BytesIO
 from flask import Flask, request, jsonify
-
+import subprocess
 
 config = json.loads(config_str)
 app = Flask(__name__)
@@ -87,7 +88,23 @@ class ModelManager:
     def __init__(self, config):
         self.config = config
         self.models = {}
-        self.device = self.select_device()
+
+    def command_result_as_int(self, command):
+        return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
+
+    def select_device_with_larger_free_memory(self, available_devices):
+        device = None
+        memory = 0
+
+        for available_device in available_devices:
+            id = available_device.split(":")
+            id = id[-1]
+            free_memory = self.command_result_as_int(f"nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader --id={id}")
+            if free_memory > memory:
+                memory = free_memory
+                device = available_device
+
+        return device if device else "cpu"
 
     def select_device(self):
         if not torch.cuda.is_available():
@@ -95,7 +112,7 @@ class ModelManager:
 
         device_map = self.config.get('device_map', {})
         available_devices = list(device_map.keys())
-        return available_devices[0] if available_devices else "cpu"
+        return self.select_device_with_larger_free_memory(available_devices)
 
     def setup(self):
         self.models.clear()
@@ -109,7 +126,7 @@ class ModelManager:
             try:
                 ### BEGIN USER EDITABLE SECTION ###
                 model = DiffusionPipeline.from_pretrained(model_key,torch_dtype=torch.bfloat16, use_auth_token=model_access_token)
-                model.to(self.device)
+                model.to(self.select_device())
                 model.enable_xformers_memory_efficient_attention()
                 self.models[model_name] = model
                 ### END USER EDITABLE SECTION ###
@@ -123,10 +140,10 @@ class ModelManager:
             refiner_model = self.models["refiner_model"]
 
             images = base_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], num_inference_steps=50).images
-            torch.cuda.empty_cache() if self.device != "cpu" else None
+            torch.cuda.empty_cache() if self.select_device() != "cpu" else None
 
             images = refiner_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], image=images, num_inference_steps=50).images
-            torch.cuda.empty_cache() if self.device != "cpu" else None
+            torch.cuda.empty_cache() if self.select_device() != "cpu" else None
 
             if config["functions"][0]["return_type"] == "image/jpeg":
                 buffered = BytesIO()
