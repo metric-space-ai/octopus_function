@@ -5,12 +5,12 @@ import os
 
 dependencies = [
     "pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118",
-    "pip install -q python-dotenv",
-    "pip install -q accelerate",
-    "pip install -q transformers",
-    "pip install -q safetensors",
-    "pip install -q flask",
-    "pip install -q pyngrok",
+    "pip install -q python-dotenv==1.0.0",
+    "pip install -q accelerate==0.23.0",
+    "pip install -q transformers==4.34.0",
+    "pip install -q safetensors==0.4.0",
+    "pip install -q flask==3.0.0",
+    "pip install -q pyngrok==7.0.0",
 
 ]
 
@@ -24,9 +24,10 @@ import torch
 config_str = """
 {
    "device_map": {
-        "cuda:0": "10GiB",
-        "cuda:1": "10GiB",
-        "cpu": "30GiB"
+    "cuda:0": "15GiB",
+    "cuda:1": "15GiB",
+    "cuda:2": "15GiB",
+    "cuda:3": "15GiB"
     },
     "required_python_version": "cp311",
     "models": {
@@ -66,6 +67,7 @@ import base64
 from io import BytesIO
 from flask import Flask, request, jsonify
 import re
+import subprocess
 
 def transform_output(output):
     print(output)
@@ -94,13 +96,30 @@ class ModelManager:
         self.models = {}
         self.device = self.select_device()
 
+    def command_result_as_int(self, command):
+        return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
+
+    def select_device_with_larger_free_memory(self, available_devices):
+        device = None
+        memory = 0
+
+        for available_device in available_devices:
+            id = available_device.split(":")
+            id = id[-1]
+            free_memory = self.command_result_as_int(f"nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader --id={id}")
+            if free_memory > memory:
+                memory = free_memory
+                device = available_device
+
+        return device if device else "cpu"
+
     def select_device(self):
         if not torch.cuda.is_available():
             return "cpu"
 
         device_map = self.config.get('device_map', {})
         available_devices = list(device_map.keys())
-        return available_devices[0] if available_devices else "cpu"
+        return self.select_device_with_larger_free_memory(available_devices)
 
     def setup(self):
         self.models.clear()
