@@ -73,7 +73,7 @@ import json
 import base64
 from io import BytesIO
 from flask import Flask, request, jsonify
-
+import subprocess
 
 config = json.loads(config_str)
 app = Flask(__name__)
@@ -84,13 +84,30 @@ class ModelManager:
         self.models = {}
         self.device = self.select_device()
 
+    def command_result_as_int(self, command):
+        return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
+
+    def select_device_with_larger_free_memory(self, available_devices):
+        device = None
+        memory = 0
+
+        for available_device in available_devices:
+            id = available_device.split(":")
+            id = id[-1]
+            free_memory = self.command_result_as_int(f"nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader --id={id}")
+            if free_memory > memory:
+                memory = free_memory
+                device = available_device
+
+        return device if device else "cpu"
+
     def select_device(self):
         if not torch.cuda.is_available():
             return "cpu"
 
         device_map = self.config.get('device_map', {})
         available_devices = list(device_map.keys())
-        return available_devices[0] if available_devices else "cpu"
+        return self.select_device_with_larger_free_memory(available_devices)
 
     def setup(self):
         self.models.clear()

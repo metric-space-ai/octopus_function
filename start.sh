@@ -23,7 +23,7 @@ nohup flask --app octopus_DataPrivacyComplianceCheck run -h 0.0.0.0 -p 5004 2>&1
 sudo ufw allow 5005/tcp
 python3 -m venv .venv
 . .venv/bin/activate
-nohup flask --app sdxl10_octopusapi run -h 0.0.0.0 -p 5005 2>&1 &
+nohup flask --app octopus_text2img_SDXL run -h 0.0.0.0 -p 5005 2>&1 &
 
 python3 -m venv .venv
 . .venv/bin/activate
