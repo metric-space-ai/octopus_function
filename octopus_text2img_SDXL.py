@@ -1,43 +1,36 @@
 import os
-#os.environ["FLASK_ENV"] = "development"
 
 ### BEGIN USER EDITABLE SECTION ###
-
 dependencies = [
-    'pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118',
-    'pip install -q python-dotenv==1.0.0',
-    'pip install -q accelerate==0.23.0',
-    'pip install -q transformers==4.34.0',
-    'pip install -q invisible-watermark==0.2.0',
-    'pip install -q numpy==1.26.0',
-    'pip install -q PyWavelets==1.4.1',
-    'pip install -q opencv-python==4.8.1.78',
-    'pip install -q safetensors==0.4.0',
-    'pip install -q xformers==0.0.22',
+    'pip install -q torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118',
+    'pip install -q torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cu118',
+    'pip install -q torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118',
     'pip install -q diffusers==0.21.4',
-    'pip install -q flask==3.0.0',
+    'pip install -q accelerate==0.24.0',
+    'pip install -q transformers==4.34.1',
+    'pip install -q flask==2.2.5',
     'pip install -q pyngrok==7.0.0'
 ]
 
 for command in dependencies:
     os.system(command)
 
-
-from diffusers import DiffusionPipeline
+from diffusers import DiffusionPipeline, StableDiffusionXLPipeline, AutoencoderKL, DPMSolverMultistepScheduler
 import torch
 
 config_str = '''
 {
    "device_map": {
-    "cuda:0": "15GiB",
-    "cuda:1": "15GiB",
-    "cuda:2": "15GiB",
-    "cuda:3": "15GiB"
+    "cuda:0": "10GiB",
+    "cuda:1": "10GiB",
+    "cpu": "30GiB"
     },
-    "required_python_version": "cp311",
     "models": [
+        {
+            "key": "madebyollin/sdxl-vae-fp16-fix",
+            "name": "VAE",
+            "access_token": "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"
+        },
         {
             "key": "stabilityai/stable-diffusion-xl-base-1.0",
             "name": "base_model",
@@ -48,11 +41,12 @@ config_str = '''
             "name": "refiner_model",
             "access_token": "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"
         }
+
     ],
     "functions": [
         {
             "name": "text-to-image",
-            "description": "Generates an image with SDXL based on a positive and negative prompt to describe what should be on the image and what not",
+            "description": "Generates an image based on a positive and negative prompt",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -79,7 +73,7 @@ import json
 import base64
 from io import BytesIO
 from flask import Flask, request, jsonify
-import subprocess
+
 
 config = json.loads(config_str)
 app = Flask(__name__)
@@ -88,23 +82,7 @@ class ModelManager:
     def __init__(self, config):
         self.config = config
         self.models = {}
-
-    def command_result_as_int(self, command):
-        return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
-
-    def select_device_with_larger_free_memory(self, available_devices):
-        device = None
-        memory = 0
-
-        for available_device in available_devices:
-            id = available_device.split(":")
-            id = id[-1]
-            free_memory = self.command_result_as_int(f"nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader --id={id}")
-            if free_memory > memory:
-                memory = free_memory
-                device = available_device
-
-        return device if device else "cpu"
+        self.device = self.select_device()
 
     def select_device(self):
         if not torch.cuda.is_available():
@@ -112,7 +90,7 @@ class ModelManager:
 
         device_map = self.config.get('device_map', {})
         available_devices = list(device_map.keys())
-        return self.select_device_with_larger_free_memory(available_devices)
+        return available_devices[0] if available_devices else "cpu"
 
     def setup(self):
         self.models.clear()
@@ -125,9 +103,42 @@ class ModelManager:
 
             try:
                 ### BEGIN USER EDITABLE SECTION ###
-                model = DiffusionPipeline.from_pretrained(model_key,torch_dtype=torch.bfloat16, use_auth_token=model_access_token)
-                model.to(self.select_device())
-                model.enable_xformers_memory_efficient_attention()
+
+                if model_name =="VAE":
+                  model = AutoencoderKL.from_pretrained(model_key, torch_dtype=torch.float16)
+
+                elif model_name == "base_model":
+                  model = StableDiffusionXLPipeline.from_pretrained(
+                        model_key,
+                        vae=self.models["VAE"],
+                        torch_dtype=torch.float16, variant="fp16",
+                        use_safetensors=True,
+                        add_watermarker=False,
+                        use_auth_token = model_access_token
+                  )
+                  model.enable_vae_slicing()
+                  model.enable_vae_tiling()
+
+                  # performant sampler so we can use just 20 iterations
+                  model.scheduler = DPMSolverMultistepScheduler.from_config(
+                      model.scheduler.config,
+                      algorithm_type="sde-dpmsolver++",
+                      use_karras_sigmas=True)
+                  
+                elif model_name == "refiner_model":
+                    model = DiffusionPipeline.from_pretrained(
+                        model_key,
+                        text_encoder_2=self.models["base_model"].text_encoder_2,
+                        vae=self.models["VAE"],
+                        torch_dtype=torch.float16, variant="fp16",
+                        use_safetensors=True,
+                        add_watermarker=False,
+                        use_auth_token = model_access_token
+                    )
+
+                    model.scheduler = self.models["base_model"].scheduler
+
+                model.to(self.device)
                 self.models[model_name] = model
                 ### END USER EDITABLE SECTION ###
             except Exception as e:
@@ -139,11 +150,11 @@ class ModelManager:
             base_model = self.models["base_model"]
             refiner_model = self.models["refiner_model"]
 
-            images = base_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], num_inference_steps=50).images
-            torch.cuda.empty_cache() if self.select_device() != "cpu" else None
+            images = base_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], num_inference_steps=20).images
+            torch.cuda.empty_cache() if self.device != "cpu" else None
 
-            images = refiner_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], image=images, num_inference_steps=50).images
-            torch.cuda.empty_cache() if self.select_device() != "cpu" else None
+            images = refiner_model(prompt=[parameters["value1"]], negative_prompt=[parameters["value2"]], image=images, num_inference_steps=20,denoising_start=0.8).images
+            torch.cuda.empty_cache() if self.device != "cpu" else None
 
             if config["functions"][0]["return_type"] == "image/jpeg":
                 buffered = BytesIO()
@@ -157,12 +168,12 @@ class ModelManager:
 
 model_manager = ModelManager(config)
 
-@app.route('/v1/setup', methods=['POST'])
+@app.route('/setup', methods=['GET'])
 def setup():
     model_manager.setup()
-    return jsonify({"status": "models loaded successfully", "setup": "Performed"}), 201
+    return jsonify({"status": "models loaded successfully"})
 
-@app.route('/v1/<function_name>', methods=['POST'])
+@app.route('/<function_name>', methods=['POST'])
 def generic_route(function_name):
     function_config = next((f for f in config["functions"] if f["name"] == function_name), None)
 
@@ -177,7 +188,7 @@ def generic_route(function_name):
 
     result = model_manager.infer(parameters)
     if result:
-        return app.response_class(result, content_type=function_config["return_type"]), 201
+        return app.response_class(result, content_type=function_config["return_type"])
     else:
         return jsonify({"error": "Error during inference"}), 500
 
@@ -185,7 +196,7 @@ def generic_route(function_name):
 def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
-'''
+
 import threading
 from pyngrok import ngrok
 import time
@@ -205,6 +216,7 @@ for function_name in function_names:
     time.sleep(5)
     print(f'Endpoint here: {public_url}/{function_name}')
 
+
 import requests
 
 BASE_URL = f"{public_url}"
@@ -213,14 +225,14 @@ BASE_URL = f"{public_url}"
 ### BEGIN USER EDITABLE SECTION ###
 def setup_test():
     response = requests.get(f"{BASE_URL}/setup")
-    
+
     # Check if the request was successful
     if response.status_code == 200:
         return (True, response.json())  # True indicates success
     else:
         return (False, response.json())  # False indicates an error
 
-def infer_test(positive_prompt="a cyberpunk logo with a brain", negative_prompt="bad quality"):
+def infer_test(positive_prompt="a cyberpunk icon of a octopus", negative_prompt="bad quality"):
     headers = {
         "Content-Type": "application/json"
     }
@@ -229,7 +241,7 @@ def infer_test(positive_prompt="a cyberpunk logo with a brain", negative_prompt=
         "value2": negative_prompt
     }
     response = requests.post(f"{BASE_URL}/text-to-image", headers=headers, json=data)
-    
+
     if response.status_code == 200:
         # Save the image to a file
         with open("output_image.jpeg", "wb") as img_file:
@@ -247,4 +259,10 @@ print(result_setup)
 
 result_infer = infer_test()
 print(result_infer)
-'''
+
+
+
+#plotting only for notebook
+from IPython.display import Image, display
+
+display(Image(filename='/content/output_image.jpeg'))
