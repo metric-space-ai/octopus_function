@@ -2,23 +2,24 @@ import os
 os.environ["FLASK_ENV"] = "development"
 
 dependencies = [
-   'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118',
-   'pip install transformers',
-   'pip -q install langchain',
-   'pip install -q flask',
-   'pip install pypdf',
-   'pip install cython',
-   'pip install sentence_transformers',
-   'pip install chromadb',
-   'pip install -U accelerate',
-   'pip install -U sentencepiece',
-   'pip install flask pyngrok',
-   'pip install gdown'
+   'pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118',
+   'pip install -q torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cu118',
+   'pip install -q torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu118',
+   'pip install -q transformers==4.34.0',
+   'pip install -q langchain==0.0.326',
+   'pip install -q flask==3.0.0',
+   'pip install -q pypdf==3.17.0',
+   'pip install -q cython==3.0.5',
+   'pip install -q sentence_transformers==2.2.2',
+   'pip install -q chromadb==0.4.15',
+   'pip install -q accelerate==0.23.0',
+   'pip install -q sentencepiece==0.1.99',
+   'pip install -q pyngrok==7.0.0',
+   'pip install -q gdown==4.7.1'
    ]
 
-# for command in dependencies:
-#     os.system(command)
-
+for command in dependencies:
+    os.system(command)
 
 # ---------------------------------------------------
 # creating the configuration script

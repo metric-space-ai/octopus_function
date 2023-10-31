@@ -1,6 +1,6 @@
 import os
 ### BEGIN USER EDITABLE SECTION ###
-os.system('pip install -q tqdm')
+os.system('pip install -q tqdm==4.66.1')
 from tqdm import tqdm
 dependencies = [
     "pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118",
