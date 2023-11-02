@@ -5,12 +5,12 @@ import os
 
 dependencies = [
     "pip install -q torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118",
-    "pip install -q python-dotenv",
-    "pip install -q accelerate",
-    "pip install -q transformers",
-    "pip install -q safetensors",
-    "pip install -q flask",
-    "pip install -q pyngrok",
+    "pip install -q python-dotenv==1.0.0",
+    "pip install -q accelerate==0.23.0",
+    "pip install -q transformers==4.34.0",
+    "pip install -q safetensors==0.4.0",
+    "pip install -q flask==3.0.0",
+    "pip install -q pyngrok==7.0.0",
 
 ]
 
