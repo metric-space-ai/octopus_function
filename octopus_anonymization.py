@@ -9,6 +9,7 @@ dependencies = [
     "pip install -q accelerate==0.23.0",
     "pip install -q transformers==4.34.0",
     "pip install -q safetensors==0.4.0",
+    "pip install -q sentencepiece==0.1.99",
     "pip install -q flask==3.0.0",
     "pip install -q pyngrok==7.0.0",
 
