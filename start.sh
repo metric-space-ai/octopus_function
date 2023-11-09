@@ -30,6 +30,9 @@ python3 -m venv .venv
 nohup flask --app information_retrieval run -h 0.0.0.0 -p 5006 2>&1 &
 
 
+nohup flask --app octopus_anonymization run -h 0.0.0.0 -p 5007 2>&1 &
+
+
 # octopus_function_translator.py
 # cuda:0 - 7.0 GiB
 

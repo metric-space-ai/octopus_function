@@ -25,9 +25,10 @@ import torch
 config_str = """
 {
    "device_map": {
-        "cuda:0": "10GiB",
-        "cuda:1": "10GiB",
-        "cpu": "30GiB"
+        "cuda:0": "15GiB",
+        "cuda:1": "15GiB",
+        "cuda:2": "15GiB",
+        "cuda:3": "15GiB"
     },
     "required_python_version": "cp311",
     "models": {
@@ -84,7 +85,7 @@ from flask import Flask, request, jsonify
 import re
 from transformers import LlamaTokenizer
 from transformers import LlamaForCausalLM
-
+import subprocess
 
 config = json.loads(config_str)
 
@@ -96,13 +97,31 @@ class ModelManager:
         self.models = {}
         self.device = self.select_device()
 
+    def command_result_as_int(self, command):
+        return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
+
+    def select_device_with_larger_free_memory(self, available_devices):
+        device = None
+        memory = 0
+
+        for available_device in available_devices:
+            id = available_device.split(":")
+            id = id[-1]
+            free_memory = self.command_result_as_int(f"nvidia-smi --query-gpu=memory.free --format=csv,nounits,noheader --id={id}")
+            if free_memory > memory:
+                memory = free_memory
+                device = available_device
+
+        return device if device else "cpu"
+
     def select_device(self):
         if not torch.cuda.is_available():
             return "cpu"
 
         device_map = self.config.get('device_map', {})
         available_devices = list(device_map.keys())
-        return available_devices[0] if available_devices else "cpu"
+        return self.select_device_with_larger_free_memory(available_devices)
+
 
     def setup(self):
         self.models.clear()
@@ -116,7 +135,7 @@ class ModelManager:
         try:
             tokenizer = LlamaTokenizer.from_pretrained(model_key, use_auth_token=model_access_token)
             tokenizer.pad_token = tokenizer.eos_token
-            model = LlamaForCausalLM.from_pretrained(model_key, torch_dtype=torch.bfloat16, device_map='balanced', use_auth_token=model_access_token)
+            model = LlamaForCausalLM.from_pretrained(model_key, torch_dtype=torch.bfloat16, use_auth_token=model_access_token)
             model.to(self.device)
             #model.enable_xformers_memory_efficient_attention() 
             #self.tokenizer[tokenizer_name] = tokenizer
