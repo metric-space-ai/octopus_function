@@ -182,104 +182,104 @@ def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
 
-#import threading
-#from pyngrok import ngrok
-#import time
+import threading
+from pyngrok import ngrok
+import time
 
 # Start the Flask server in a new thread
-#threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
-#public_url = ngrok.connect(5000).public_url
+public_url = ngrok.connect(5000).public_url
 
-#function_names = [func['name'] for func in config["functions"]]
+function_names = [func['name'] for func in config["functions"]]
 
-#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
-#for function_name in function_names:
-#    time.sleep(5)
-#    print(f'Endpoint here: {public_url}/{function_name}')
+for function_name in function_names:
+    time.sleep(5)
+    print(f'Endpoint here: {public_url}/{function_name}')
 
-#import requests
-#from PIL import Image
-#import io
+import requests
+from PIL import Image
+import io
 
 
-#BASE_URL = f"{public_url}"
+BASE_URL = f"{public_url}"
 
 
 ### BEGIN USER EDITABLE SECTION ###
-#def setup_test():
+def setup_test():
 
-#    response = requests.get(f"{BASE_URL}/setup")
+    response = requests.get(f"{BASE_URL}/setup")
 
     # Check if the request was successful
-#    if response.status_code == 200:
+    if response.status_code == 200:
 
-#        return (True, response.json())  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+        return (True, response.json())  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 
-#def infer_test(img_url = 'https://storage.googleapis.com/sfr-vision-language-research/LAVIS/assets/merlion.png', prompt="which city is this?"):
+def infer_test(img_url = 'https://storage.googleapis.com/sfr-vision-language-research/LAVIS/assets/merlion.png', prompt="which city is this?"):
     # convert image to base64
-#    raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
-#    buffer = io.BytesIO()
-#    raw_image.save(buffer, format="JPEG")
-#    base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    raw_image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
+    buffer = io.BytesIO()
+    raw_image.save(buffer, format="JPEG")
+    base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     # create promt
-#    prompt = "Question: " + prompt + " Answer:"
+    prompt = "Question: " + prompt + " Answer:"
 
-#    headers = {
-#        "Content-Type": "application/json"
-#    }
-#    data = {
-#        "image": base64_image,
-#        "prompt": prompt
-#    }
-#    response = requests.post(f"{BASE_URL}/VQA", headers=headers, json=data)
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "image": base64_image,
+        "prompt": prompt
+    }
+    response = requests.post(f"{BASE_URL}/VQA", headers=headers, json=data)
 
-#    if response.status_code == 200:
+    if response.status_code == 200:
 
         # Save the image to a file
-#        with open("output_text.txt", "wb") as file:
-#            file.write(response.content)
-#        print("Answer saved as output_text.txt!")
-#        return (True, response.content)  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+        with open("output_text.txt", "wb") as file:
+            file.write(response.content)
+        print("Answer saved as output_text.txt!")
+        return (True, response.content)  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 
 
-#def infer_test_url(img_url='https://storage.googleapis.com/sfr-vision-language-research/LAVIS/assets/merlion.png' , prompt="which city is this?"):
+def infer_test_url(img_url='https://storage.googleapis.com/sfr-vision-language-research/LAVIS/assets/merlion.png' , prompt="which city is this?"):
     # create promt
-#    prompt = "Question: " + prompt + " Answer:"
+    prompt = "Question: " + prompt + " Answer:"
 
-#    headers = {
-#        "Content-Type": "application/json"
-#    }
-#    data = {
-#        "image": img_url,
-#        "prompt": prompt
-#    }
-#    response = requests.post(f"{BASE_URL}/VQA", headers=headers, json=data)
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "image": img_url,
+        "prompt": prompt
+    }
+    response = requests.post(f"{BASE_URL}/VQA", headers=headers, json=data)
 
-#    if response.status_code == 200:
+    if response.status_code == 200:
 
         # Save the image to a file
-#        with open("output_text.txt", "wb") as file:
-#            file.write(response.content)
-#        print("Answer saved as output_text.txt!")
-#        return (True, response.content)  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+        with open("output_text.txt", "wb") as file:
+            file.write(response.content)
+        print("Answer saved as output_text.txt!")
+        return (True, response.content)  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 ### END USER EDITABLE SECTION ###
 
 # Testing
-#result_setup = setup_test()
+result_setup = setup_test()
 
-#result_infer = infer_test()
-#print(result_infer)
+result_infer = infer_test()
+print(result_infer)
 
-#result_infer_url = infer_test_url("https://hips.hearstapps.com/hmg-prod/images/high-angle-view-of-tokyo-skyline-at-dusk-japan-royalty-free-image-1664309926.jpg?resize=2048:*", "What can i see in this image? Describe it in detail")
-#print(result_infer_url)
+result_infer_url = infer_test_url("https://hips.hearstapps.com/hmg-prod/images/high-angle-view-of-tokyo-skyline-at-dusk-japan-royalty-free-image-1664309926.jpg?resize=2048:*", "What can i see in this image? Describe it in detail")
+print(result_infer_url)

@@ -220,59 +220,59 @@ def handle_exception(e):
     # Generic exception handler
     return jsonify(error=str(e)), 500
 
-#import threading
-#from pyngrok import ngrok
-#import time
+import threading
+from pyngrok import ngrok
+import time
 
 # Start the Flask server in a new thread
-#threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
+threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
 # Set up Ngrok to create a tunnel to the Flask server
-#public_url = ngrok.connect(5000).public_url
+public_url = ngrok.connect(5000).public_url
 
-#function_names = [func['name'] for func in config["functions"]]
+function_names = [func['name'] for func in config["functions"]]
 
-#print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
+print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
 # Loop over function_names and print them
-#for function_name in function_names:
-#    time.sleep(5)
-#    print(f'Endpoint here: {public_url}/{function_name}')
+for function_name in function_names:
+    time.sleep(5)
+    print(f'Endpoint here: {public_url}/{function_name}')
 
-#import requests
+import requests
 
-#BASE_URL = f"{public_url}"
+BASE_URL = f"{public_url}"
 
 
 ### BEGIN USER EDITABLE SECTION ###
-#def setup_test():
-#    response = requests.post(f"{BASE_URL}/setup")
+def setup_test():
+    response = requests.post(f"{BASE_URL}/setup")
     
     # Check if the request was successful
-#    if response.status_code == 200:
-#        return (True, response.json())  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+    if response.status_code == 200:
+        return (True, response.json())  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 
-#def infer_test(prompt="John, our patient, felt a throbbing headache and dizziness for two weeks. He was immediately advised to get a MRI scan of his brain. He reached out to Meed Hospital and got the scan done. The detailed report of his brain scan indicates a mass in the frontal lobe. His brain scan report accompanied by the MRI images include the identification number 12345 and is linked to his personal information. The doctor attending to him, Dr. Sally, is yet to discuss this with him in detail about his medical condition. In the following days, the healthcare team will chalk out a personalized treatment plan depending on John's medical history, condition and age."):
-#    headers = {
-#        "Content-Type": "application/json"
-#    }
-#    data = {
-#        "value1": prompt,
-#    }
-#    response = requests.post(f"{BASE_URL}/sensitive-information", headers=headers, json=data)
+def infer_test(prompt="John, our patient, felt a throbbing headache and dizziness for two weeks. He was immediately advised to get a MRI scan of his brain. He reached out to Meed Hospital and got the scan done. The detailed report of his brain scan indicates a mass in the frontal lobe. His brain scan report accompanied by the MRI images include the identification number 12345 and is linked to his personal information. The doctor attending to him, Dr. Sally, is yet to discuss this with him in detail about his medical condition. In the following days, the healthcare team will chalk out a personalized treatment plan depending on John's medical history, condition and age."):
+    headers = {
+        "Content-Type": "application/json"
+    }
+    data = {
+        "value1": prompt,
+    }
+    response = requests.post(f"{BASE_URL}/sensitive-information", headers=headers, json=data)
     
-#    if response.status_code == 200:
-#        return (True, response.json())  # True indicates success
-#    else:
-#        return (False, response.json())  # False indicates an error
+    if response.status_code == 200:
+        return (True, response.json())  # True indicates success
+    else:
+        return (False, response.json())  # False indicates an error
 
 ### END USER EDITABLE SECTION ###
-#time.sleep(5)
+time.sleep(5)
 # Testing
-#result_setup = setup_test()
-#print(result_setup)
+result_setup = setup_test()
+print(result_setup)
 
-#result_infer = infer_test()
-#print(result_infer[1])
+result_infer = infer_test()
+print(result_infer[1])
