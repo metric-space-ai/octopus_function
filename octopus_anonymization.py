@@ -59,18 +59,14 @@ config_str = """
 }
 """
 import re
-def extract_assistant_response(input_text):
-    # Find all occurrences of "ASSISTANT:" in the input text
-    matches = re.finditer(r'ASSISTANT:', input_text)
+def extract_last_assistant_response(input_text):
+    # Find the occurrence of “ASSISTANT:” in the input text
+    match = re.search(r"ASSISTANT:", input_text)
+    # Get the index where the last “ASSISTANT:” ends
+    start_index = match.end()
+    response = input_text[start_index:].strip()
+    return response
 
-    # Extract text after each occurrence of "ASSISTANT:"
-    assistant_responses = []
-    for match in matches:
-        start_index = match.end()  # Get the index where "ASSISTANT:" ends
-        response = input_text[start_index:].strip()
-        assistant_responses.append(response)
-
-    return assistant_responses
 
 
 
@@ -96,7 +92,7 @@ class ModelManager:
         self.config = config
         self.models = {}
         self.device = self.select_device()
-
+    
     def command_result_as_int(self, command):
         return int(subprocess.check_output(command, shell=True).decode('utf-8').strip())
 
@@ -135,8 +131,8 @@ class ModelManager:
         try:
             tokenizer = LlamaTokenizer.from_pretrained(model_key, use_auth_token=model_access_token)
             tokenizer.pad_token = tokenizer.eos_token
-            model = LlamaForCausalLM.from_pretrained(model_key, torch_dtype=torch.bfloat16, use_auth_token=model_access_token)
-            model.to(self.device)
+            model = LlamaForCausalLM.from_pretrained(model_key, torch_dtype=torch.bfloat16, use_auth_token=model_access_token, device_map='balanced')
+            #model.to(self.device)
             #model.enable_xformers_memory_efficient_attention() 
             #self.tokenizer[tokenizer_name] = tokenizer
             self.models[model_name] = model
@@ -158,27 +154,43 @@ class ModelManager:
             prompt = f'USER: Resample the entities: {text}\n\nASSISTANT:'
             inputs = tokenizer(prompt, return_tensors='pt').to(self.device)
 
-            outputs = base_model.generate(inputs.input_ids, max_new_tokens=250, do_sample=False, top_k=50, top_p=0.98, num_beams=1)
+
+            # {'temperature': 0.8, 'max_tokens': 300, 'do_sample': False, 'num_beams': 5, 'penalty_alpha': 1.3, 'top_k': 180, 'repetition_penalty': 2.3}
+
+            outputs = base_model.generate(inputs.input_ids, max_new_tokens=250, do_sample=True, temperature=0.7)
             output_text_1 = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-            generated_part = extract_assistant_response(output_text_1)[0]
+            generated_part = extract_last_assistant_response(output_text_1)
+
+            
+            try:
+                entities = re.search(r"\{.*?\}", generated_part, re.DOTALL).group(0)
+                data_dict = eval(entities)
+                formatted_json = json.dumps(data_dict, indent=4)
+            except:
+                print('wrong entities format : ')
+                print(generated_part)
+
+            
+
+            prompt_2 = f"USER: Rephrase with {str(formatted_json)}: {text}\n\nASSISTANT:"
 
 
-            prompt_2 = f"USER: Rephrase with {generated_part}: {text}\n\nASSISTANT:"
             inputs = tokenizer(prompt_2, return_tensors='pt').to(self.device)
 
-            max_length = 2048
-            inputs_length = inputs.input_ids.shape[1]
-            max_new_tokens_value = max_length - inputs_length
-
-            outputs = base_model.generate(inputs.input_ids, max_new_tokens=max_new_tokens_value, do_sample=False, top_k=50, top_p=0.98)
+            outputs = base_model.generate(inputs.input_ids, max_length=2048)
             torch.cuda.empty_cache() if self.device != "cpu" else None
             response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-            response = extract_assistant_response(response)[0]
+            response = extract_last_assistant_response(response)
 
-            response_json = {"response": response}
+            response_dict = {"response": response}
 
-            return json.dumps(response_json)
+            #print(json.dumps(response_dict, indent=4))
+
+            #response_json = json.dumps(response_dict, indent=4)
+
+            return response_dict
+
                     
             ### END USER EDITABLE SECTION ###
         except Exception as e:
@@ -209,9 +221,10 @@ def generic_route(function_name):
 
     result = model_manager.infer(parameters)
 
+
     if result:
-        #return app.response_class(result, content_type=function_config["return_type"])
-        return result, 201
+        #return app.response_class(result, content_type=function_config["return_type"]), 201
+        return jsonify(result), 201
     else:
         return jsonify({"error": "Error during inference"}), 500
 
@@ -224,53 +237,53 @@ import threading
 from pyngrok import ngrok
 import time
 
-# Start the Flask server in a new thread
+#Start the Flask server in a new thread
 threading.Thread(target=app.run, kwargs={"use_reloader": False}).start()
 
-# Set up Ngrok to create a tunnel to the Flask server
+#Set up Ngrok to create a tunnel to the Flask server
 public_url = ngrok.connect(5000).public_url
 
 function_names = [func['name'] for func in config["functions"]]
 
 print(f" * ngrok tunnel \"{public_url}\" -> \"http://127.0.0.1:{5000}/\"")
 
-# Loop over function_names and print them
+#Loop over function_names and print them
 for function_name in function_names:
-    time.sleep(5)
-    print(f'Endpoint here: {public_url}/{function_name}')
+   time.sleep(5)
+   print(f'Endpoint here: {public_url}/{function_name}')
 
 import requests
 
 BASE_URL = f"{public_url}"
 
 
-### BEGIN USER EDITABLE SECTION ###
+## BEGIN USER EDITABLE SECTION ###
 def setup_test():
-    response = requests.post(f"{BASE_URL}/setup")
+   response = requests.post(f"{BASE_URL}/v1/setup")
     
-    # Check if the request was successful
-    if response.status_code == 200:
-        return (True, response.json())  # True indicates success
-    else:
-        return (False, response.json())  # False indicates an error
+    #Check if the request was successful
+   if response.status_code == 201:
+       return (True, response.json())  # True indicates success
+   else:
+       return (False, response.json())  # False indicates an error
 
-def infer_test(prompt="John, our patient, felt a throbbing headache and dizziness for two weeks. He was immediately advised to get a MRI scan of his brain. He reached out to Meed Hospital and got the scan done. The detailed report of his brain scan indicates a mass in the frontal lobe. His brain scan report accompanied by the MRI images include the identification number 12345 and is linked to his personal information. The doctor attending to him, Dr. Sally, is yet to discuss this with him in detail about his medical condition. In the following days, the healthcare team will chalk out a personalized treatment plan depending on John's medical history, condition and age."):
-    headers = {
-        "Content-Type": "application/json"
-    }
-    data = {
-        "value1": prompt,
-    }
-    response = requests.post(f"{BASE_URL}/sensitive-information", headers=headers, json=data)
+def infer_test(prompt="Here is my password qwerty1234567 and my passport number is qaz123wsx456"):
+   headers = {
+       "Content-Type": "application/json"
+   }
+   data = {
+       "value1": prompt,
+   }
+   response = requests.post(f"{BASE_URL}/v1/sensitive-information", headers=headers, json=data)
     
-    if response.status_code == 200:
-        return (True, response.json())  # True indicates success
-    else:
-        return (False, response.json())  # False indicates an error
+   if response.status_code == 201:
+       return (True, response.json())  # True indicates success
+   else:
+       return (False, response.json())  # False indicates an error
 
-### END USER EDITABLE SECTION ###
+## END USER EDITABLE SECTION ###
 time.sleep(5)
-# Testing
+#Testing
 result_setup = setup_test()
 print(result_setup)
 
