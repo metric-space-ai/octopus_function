@@ -119,9 +119,12 @@ class BlenderModelManager:
         bpy.ops.wm.open_mainfile(filepath=file_name)
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
         bpy.context.preferences.addons['cycles'].preferences.refresh_devices()
+        device_list = bpy.context.preferences.addons['cycles'].preferences.get_devices_for_type('CUDA')
+        for device in device_list:
+            device.use = False
         bpy.context.preferences.addons['cycles'].preferences.devices[gpu_index].use = True
-        print(f"Using GPU:{gpu_index} for Blender rendering")
         bpy.context.scene.cycles.device = 'GPU'
+        print(f"Using GPU:{gpu_index} for Blender rendering")
 
         self.orbit_camera_object = bpy.data.objects.get("Orbit_camera")
         self.orbit_curve_object = bpy.data.objects.get("Orbit_curve")
