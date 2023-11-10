@@ -27,8 +27,8 @@ for command in dependencies:
 config_str = '''
 {
    "device_map": {
-    "cuda:0": "10GiB",
-    "cuda:1": "10GiB",
+    "cuda:0": "20GiB",
+    "cuda:1": "20GiB",
     "cpu": "30GiB"
     },
     "required_python_version": "cp311",
@@ -151,15 +151,20 @@ def wrap_text_preserve_newlines(text, width=110):
     return wrapped_text
 
 def process_llm_response(llm_response):
-    print(wrap_text_preserve_newlines(llm_response['result']))
-    print('\n\nSources:')
+    result = wrap_text_preserve_newlines(llm_response['result'])
+    query = llm_response['query']
     unique_sources = set()
 
     for source in llm_response["source_documents"]:
         unique_sources.add(source.metadata['source'])
 
+    sources = '\n\nSources: '
     for source in unique_sources:
-        print(source)
+        
+        sources = sources + source
+    
+    return {"query": query, "result": result, "sources": sources}
+        
 
 # ---------------------------------------------------
 # create the model manager class
@@ -192,6 +197,7 @@ class ModelManager:
                 loader      = DirectoryLoader(f"{self.config['models'][0]['name']}", glob="./*.pdf", recursive=True, loader_cls=PyPDFLoader)
                 documents   = loader.load()
 
+
                 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
                 texts = text_splitter.split_documents(documents)
                 
@@ -206,11 +212,19 @@ class ModelManager:
                 self.models[model_info["name"]] = retriever
 
             elif model_info['name'] == 'llama_model':
-                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device=int(self.select_device()[-1]), token=model_info["access_token"])
+                torch.cuda.empty_cache()
+  
+                #int(self.select_device()[-1])
+                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device_map='balanced', token=model_info["access_token"])
+               
                 llm  = HuggingFacePipeline(pipeline=pipe)
-
+               
                 qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.models['embeddings_model'], chain_type_kwargs=constants.chain_type_kwargs, return_source_documents=True)
+    
                 self.models[model_info["name"]] = qa_chain
+              
+
+                    
 
         return True
 
@@ -222,7 +236,7 @@ class ModelManager:
             
             llm_response = query_model(parameters['prompt'])
             torch.cuda.empty_cache() if self.device != "cpu" else None
-
+            #llm_response = process_llm_response(llm_response)
             return llm_response
             ### END USER EDITABLE SECTION ###
         except Exception as e:
@@ -262,8 +276,11 @@ def generic_route(function_name):
     parameters = {k: data[k] for k in function_config["parameters"]["properties"].keys() if k in data}
 
     result = model_manager.infer(parameters)
+
+    result = process_llm_response(result)
     if result:
-        return app.response_class(result, content_type=function_config["return_type"])
+        return jsonify(result), 200
+        #return app.response_class(result, content_type=function_config["return_type"])
     else:
         return jsonify({"error": "Error during inference"}), 500
 
@@ -326,14 +343,16 @@ def infer_test(prompt="which city is this?"):
 
     if response.status_code == 200:
         # Save the image to a file
-
-        with open("output_text.txt", "wb") as file:
-
-            file.write(response.content)
+        
+        dict_response = response.json()
+        with open("output_text.txt", "w") as file:
+            
+            file.write(str(dict_response['result']))
+            file.write(str(dict_response['sources']))
 
         print("Answer saved as output_text.txt!")
 
-        return (True, response.content)  # True indicates success
+        return (True, response.json())  # True indicates success
 
     else:
 
@@ -360,12 +379,16 @@ def infer_test_url(prompt="which city is this?"):
 
     response = requests.post(f"{BASE_URL}/QueryContent", headers=headers, json=data)
     if response.status_code == 200:
-        with open("output_text.txt", "wb") as file:
-            file.write(response.content)
+        dict_response = response.json()
+        with open("output_text.txt", "w") as file:
+
+            file.write(str(dict_response['result']))
+            file.write(str(dict_response['sources']))
+
 
         print("Answer saved as output_text.txt!")
 
-        return (True, response.content)  # True indicates success
+        return (True, response.json())  # True indicates success
 
     else:
 
