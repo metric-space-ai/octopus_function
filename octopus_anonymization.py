@@ -41,7 +41,7 @@ config_str = """
         "name": "tokenizer"
     },
     "functions": [{
-        "name": "Anonymization",
+        "name": "sensitive-information",
         "description": "Extract entities and Anonymize",
         "parameters": {
             "type": "object",
@@ -131,7 +131,8 @@ class ModelManager:
         try:
             tokenizer = LlamaTokenizer.from_pretrained(model_key, use_auth_token=model_access_token)
             tokenizer.pad_token = tokenizer.eos_token
-            model = LlamaForCausalLM.from_pretrained(model_key, torch_dtype=torch.bfloat16, use_auth_token=model_access_token, device_map='balanced')
+            model = LlamaForCausalLM.from_pretrained(model_key, torch_dtype=torch.bfloat16, use_auth_token=model_access_token)
+            model.to(self.select_device())
             #model.to(self.device)
             #model.enable_xformers_memory_efficient_attention() 
             #self.tokenizer[tokenizer_name] = tokenizer
@@ -155,9 +156,8 @@ class ModelManager:
             inputs = tokenizer(prompt, return_tensors='pt').to(self.device)
 
 
-            # {'temperature': 0.8, 'max_tokens': 300, 'do_sample': False, 'num_beams': 5, 'penalty_alpha': 1.3, 'top_k': 180, 'repetition_penalty': 2.3}
 
-            outputs = base_model.generate(inputs.input_ids, max_new_tokens=250, do_sample=True, temperature=0.7)
+            outputs = base_model.generate(inputs.input_ids, max_new_tokens=300, do_sample=False, temperature=0.8, penalty_alpha=1.3, top_k=180, num_beams=5, repetition_penalty=2.3)
             output_text_1 = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
             generated_part = extract_last_assistant_response(output_text_1)
