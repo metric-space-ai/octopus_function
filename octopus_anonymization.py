@@ -41,7 +41,7 @@ config_str = """
         "name": "tokenizer"
     },
     "functions": [{
-        "name": "sensitive-information",
+        "name": "Anonymization",
         "description": "Extract entities and Anonymize",
         "parameters": {
             "type": "object",
