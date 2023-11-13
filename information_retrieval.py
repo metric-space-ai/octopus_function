@@ -215,7 +215,7 @@ class ModelManager:
                 torch.cuda.empty_cache()
   
                 #int(self.select_device()[-1])
-                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, device_map='balanced', token=model_info["access_token"])
+                pipe = pipeline("text-generation", model=model_info["key"], max_length=2048, temperature=0.75, top_p=0.95, repetition_penalty=1.2, token=model_info["access_token"])
                
                 llm  = HuggingFacePipeline(pipeline=pipe)
                
@@ -324,7 +324,7 @@ def setup_test():
 
         return (False, response.json())  # False indicates an error
 
-def infer_test(prompt="which city is this?"):
+def infer_test(prompt="Tell me about music"):
 
     # create prompt
     prompt = "Question: " + prompt + " Answer:"
@@ -403,6 +403,6 @@ result_infer = infer_test()
 
 print(result_infer)
 
-result_infer_url = infer_test_url("What are the best retrieval augmentations for LLMs?")
+result_infer_url = infer_test_url("Tell me about books")
 
 print(result_infer_url)
