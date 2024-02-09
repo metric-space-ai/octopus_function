@@ -16,19 +16,22 @@ dependencies = [
     "pip install -q pyngrok==7.0.0",
     "pip install -q joblib==1.3.2",
     "pip install -q uuid==1.30",
-    "pip install -q gdown==4.7.1",
+    "pip install nc_py_api==0.8.0",
     "apt-get update --fix-missing && apt-get install -y --no-install-recommends libgl1-mesa-glx libsm6 libxkbcommon-x11-0 libxi6 libxxf86vm1"
 ]
 
 for command in dependencies:
     os.system(command)
 
-import gdown
+from nc_py_api import Nextcloud
 
-bpy_url = "https://drive.google.com/u/0/uc?id=1UNPCJVp-UrisPbQMAsVHhTQz92qTW86f&export=download"
+nc_user = os.getenv('NC_USERNAME')
+nc_password = os.getenv('NC_PASSWORD')
+
 bpy_package = "bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl"
-gdown.download(bpy_url, bpy_package, quiet=False)
-os.system("pip install bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl")
+nc = Nextcloud(nextcloud_url="https://nx47886.your-storageshare.de", nc_auth_user=nc_user, nc_auth_pass=nc_password)
+nc.files.download2stream("auditron_augmentation/bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl", "bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl")
+os.system(f"pip install {bpy_package}")
 
 config_str = '''
  {
@@ -36,39 +39,38 @@ config_str = '''
      "cuda:1": "10GiB",
      "cpu": "30GiB"
      },
-     "required_python_version": "cp310",
      "models": [
          {
              "key": "10133_integration.blend",
              "name": "blender_model",
-             "access_token": "https://drive.google.com/uc?id=1UAycFFA3UvSCVBwyTMZ12oD9sDiRancO&export=download"
+             "access_token": "orbit_camera/"
          }
      ],
      "functions": [
          {
              "name": "orbit-camera",
-             "description": "Renders an image showing the machine from given angle with aditional control of the zoom and tilt",
+             "description": "This function renders a .png image of a 3D model of AFK machine. You can control from what point in space the image is taken. The camera orbits around the machine, and its position is controlled by position argument. This function is useful to get an overview of the AFK machine from a given angle or a view of a particular section of the machine.",
              "parameters": {
                  "type": "object",
                  "properties": {
                      "position":{
                          "type": "int",
-                         "description": "the value from 1-100 representing 360 degree rotation arround the machine, it start on the right center of the machine"
+                         "description": "This argument values are from 1-100 and represent 360 degrees rotation around the machine. A value of 1 means that the machine is viewed from the front, 25 from the right, 50 from the back, and 75 from the left."
                      },
                      "tilt":{
                          "type": "string",
                          "enum": ["up", "center", "down"],
-                         "description": "value that controls the camera rotation in x axis, when the camera is tilted down machine is shown from top"
+                         "description": "This argument controls the camera rotation in x axis, when the camera is tilted down machine is shown from top etc. That allows seeing the AFK machine from different perspectives."
                      },
                      "zoom":{
                          "type": "string",
                          "enum": ["far", "middle", "close"],
-                         "description": "value that controls the camera zoom, it can be used to look at the machine closer or to see more of it on the same render"
+                         "description": "This argument controls the camera zoom, it can be used to look at the machine closer or farther away to get more context. Can be used for getting closed-up shots of particular sections of the AFK machine."
                      },
                      "resolution":{
                          "type": "string",
                          "enum": ["full-hd", "4k"],
-                         "description": "allows to select resolution desired by user, 4k resolution helps to see finer detail on the rendered image"
+                         "description": "This argument allows to select the resolution desired by the user, 4k resolution helps to see finer detail on the rendered image, in case some fine details are too small to be seen correctly on a standard full HD image."
                      }
                  },
                  "required": ["position"]
@@ -78,22 +80,22 @@ config_str = '''
          },
          {
              "name": "find-part",
-             "description": "Renders an image showing given part in full view, with additional control of hidding all parts between the part and the camera",
+             "description": "This function renders a .png image, showing the selected part in full view, of a 3D model of AFK machine. The part gets highlighted with a magenta color. The camera is floating on one side of the machine, and it is moved and zoomed in to the selected part. This function is helpful for getting to know how parts of the AFK machines look and how are mounted or placed on the machine.",
              "parameters": {
                  "type": "object",
                  "properties": {
                      "part":{
                          "type": "string",
-                         "description": "The part name to be found and shown on render"
+                         "description": "This argument is the part name to be found and shown on render, it must exactly match the part name in 3D model. Otherwise the function will not return the rendered image"
                      },
                      "clip":{
                          "type": "boolean",
-                         "description": "if set to True all parts befor the camera will be hidden on the reneder"
+                         "description": "This argument makes all objects between the camera and the given object not visible on the rendered image if set to True. It allows showing the requested part in case it is not visible on the render because it is obstructed by other parts of the machine."
                      },
                      "resolution":{
                          "type": "string",
                          "enum": ["full-hd", "4k"],
-                         "description": "allows to select resolution desired by user, 4k resolution helps to see finer detail on the rendered image"
+                         "description": "This argument allows to select the resolution desired by the user, 4k resolution helps to see finer detail on the rendered image, in case some fine details are too small to be seen correctly on a standard full HD image."
                      }
                  },
                  "required": ["part"]
@@ -114,17 +116,14 @@ class BlenderModelManager:
     def __init__(self, key, name, token, gpu_index = 0):
         extension = key.split(".")[-1]
         file_name = f"{name}.{extension}"
-        gdown.download(token, output=file_name, quiet=False)
+        nc.files.download2stream(token+key, file_name)
 
         bpy.ops.wm.open_mainfile(filepath=file_name)
         bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
         bpy.context.preferences.addons['cycles'].preferences.refresh_devices()
-        device_list = bpy.context.preferences.addons['cycles'].preferences.get_devices_for_type('CUDA')
-        for device in device_list:
-            device.use = False
         bpy.context.preferences.addons['cycles'].preferences.devices[gpu_index].use = True
-        bpy.context.scene.cycles.device = 'GPU'
         print(f"Using GPU:{gpu_index} for Blender rendering")
+        bpy.context.scene.cycles.device = 'GPU'
 
         self.orbit_camera_object = bpy.data.objects.get("Orbit_camera")
         self.orbit_curve_object = bpy.data.objects.get("Orbit_curve")
@@ -140,7 +139,6 @@ class BlenderModelManager:
         self._find_part(self.part_camera_object, part_name, clip)
         self._change_object_material(part_name, "highlighter")
         self._generate_image(self.part_camera_object, resolution, output_filename)
-        #bpy.app.handlers.render_post.append(self._restore_object_material(part_name))
         self._restore_object_material(part_name)
         
     def _orbit(self, position:int, tilt, zoom):
@@ -208,9 +206,11 @@ class BlenderModelManager:
         # Find the object by name
         target_object = bpy.data.objects.get(object_name)
 
-        assert target_object is not None, "Object given for geometry center does not exist"
+        assert target_object is not None, "Object given for geometry center does not exist, check the part name given"
         # Get the object's bounding box
-        bbox = [target_object.matrix_world @ v.co for v in target_object.data.vertices]
+        verts = target_object.data.verticles
+        assert verts is not None and len(verts) > 0, "Object given for geometry center does not have verticles, but it exists it might be an empty type object, try another name" 
+        bbox = [target_object.matrix_world @ v.co for v in verts]
 
         # Calculate the geometric center
         geometric_center = sum(bbox, mathutils.Vector()) / len(bbox)
@@ -226,7 +226,7 @@ class BlenderModelManager:
         # Find the object by name
         target_object = bpy.data.objects.get(object_name)
 
-        assert target_object is not None, "Part name given does not exist in Blender file"
+        assert target_object is not None, "Part name given does not exist in Blender file, check if correct name was given"
 
         # Get the X coordinate of the object's center
         coordinate = self._find_geometric_center(object_name)
@@ -265,20 +265,15 @@ class BlenderModelManager:
     def _change_object_material(self, object_name, new_material_name):
         # Find the object by name
         selected_object = bpy.data.objects.get(object_name)
-        if selected_object:
-            # Store the initial material(s) of the object
-            self.initial_materials = selected_object.data.materials[:]
-
-            # Get an existing material by its name
-            existing_material = bpy.data.materials.get(new_material_name)
-
-            if existing_material:
-                # Assign the existing material to the object
-                selected_object.data.materials[0] = existing_material  # Replace the first material slot
-                selected_object.data.update()
-        else:
-            print("Object for highlithing not found.")
-    
+        assert selected_object is not None, "Object given for highlighting doesn't exist"
+        # Store the initial material(s) of the object
+        self.initial_materials = selected_object.data.materials[:]
+        # Get an existing material by its name
+        existing_material = bpy.data.materials.get(new_material_name)
+        if existing_material:
+            # Assign the existing material to the object
+            selected_object.data.materials[0] = existing_material  # Replace the first material slot
+            selected_object.data.update()
     def _restore_object_material(self, object_name):
         # Restore the initial materials (assuming the number of material slots matches)
         selected_object = bpy.data.objects.get(object_name)
@@ -348,11 +343,11 @@ class ModelManager:
             while os.path.exists(output_filename+".png") == False:
                 time.sleep(5)
 
-            return output_filename+".png"
+            return output_filename+".png", "Here is the image for you!"
             ### END USER EDITABLE SECTION ###
         except Exception as e:
             print(f"Error during inference: {e}")
-            return None
+            return self.error_image, e
 
     def infer_part(self, parameters):
         try:
@@ -366,11 +361,11 @@ class ModelManager:
             while os.path.exists(output_filename+".png") == False:
                 time.sleep(5)
 
-            return output_filename+".png"
+            return output_filename+".png", "Here is the image for you!"
         ### END USER EDITABLE SECTION ###
         except Exception as e:
             print(f"Error during inference: {e}")
-            return None
+            return self.error_image, e
     
     def _get_gpu(self):
         min_cuda_key = None
@@ -411,7 +406,7 @@ def generic_route():
     data = request.json
     parameters = {k: data[k] for k in function_config["parameters"]["properties"].keys() if k in data}
 
-    result = model_manager.infer_orbit(parameters)
+    result, header = model_manager.infer_orbit(parameters)
     if result:
         file = open(result, mode='rb')
         fcontent = file.read()
@@ -433,7 +428,7 @@ def generic_route_1():
     data = request.json
     parameters = {k: data[k] for k in function_config["parameters"]["properties"].keys() if k in data}
 
-    result = model_manager.infer_part(parameters)
+    result, header = model_manager.infer_part(parameters)
     if result:
         file = open(result, mode='rb')
         fcontent = file.read()
