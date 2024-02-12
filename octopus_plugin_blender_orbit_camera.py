@@ -29,8 +29,9 @@ nc_user = os.getenv('NC_USERNAME')
 nc_password = os.getenv('NC_PASSWORD')
 
 bpy_package = "bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl"
+
 nc = Nextcloud(nextcloud_url="https://nx47886.your-storageshare.de", nc_auth_user=nc_user, nc_auth_pass=nc_password)
-nc.files.download2stream("auditron_augmentation/bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl", "bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl")
+nc.files.download2stream("auditron_augmentation/bpy-3.6.3rc0-cp310-cp310-manylinux_2_35_x86_64.whl", bpy_package)
 os.system(f"pip install {bpy_package}")
 
 config_str = '''
@@ -308,6 +309,7 @@ class ModelManager:
         self.config = config
         self.models = {}
         self.device = self.select_device()
+        self.error_image = None
 
     def select_device(self):
         device_map = self.config.get('device_map', {})
