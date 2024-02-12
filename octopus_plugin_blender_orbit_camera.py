@@ -209,7 +209,7 @@ class BlenderModelManager:
 
         assert target_object is not None, "Object given for geometry center does not exist, check the part name given"
         # Get the object's bounding box
-        verts = target_object.data.verticles
+        verts = target_object.data.vertices
         assert verts is not None and len(verts) > 0, "Object given for geometry center does not have verticles, but it exists it might be an empty type object, try another name" 
         bbox = [target_object.matrix_world @ v.co for v in verts]
 
