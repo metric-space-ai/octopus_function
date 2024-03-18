@@ -160,10 +160,7 @@ def internet_research_agent():
     step4result = step4(prompt, step2result, website_infos)
 
     response = {
-        "step1result": step1result,
-        "step2result": step2result,
         "response": step4result,
-        "website_infos": website_infos,
     }
 
     return jsonify(response), 201
