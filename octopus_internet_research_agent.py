@@ -149,7 +149,7 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
 
     return chat_completion.choices[0].message.content
 
-@app.route('/v1/internet-research-agent', methods=['POST'])
+@app.route('/v1/internet_research_agent', methods=['POST'])
 def internet_research_agent():
     data = request.json
     prompt = data.get("prompt", "")
