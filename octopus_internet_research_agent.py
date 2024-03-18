@@ -26,7 +26,7 @@ config_str = '''{
     "functions": [
         {
             "name": "internet_research_agent",
-            "description": "Internet research agent allows user perform research in the internet.",
+            "description": "Internet research agent allows user perform research in the internet. Use this function only when user wants to check internet.",
             "parameters": {
                 "type": "object",
                 "properties": {
