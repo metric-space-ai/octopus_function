@@ -59,12 +59,12 @@ def step1(prompt: str) -> str:
     return chat_completion.choices[0].message.content
 
 def step2(prompt: str, website_infos: []) -> str:
-    result = ''
-    for website_info in website_infos:
-        result.join(website_info["page_text"])
-    scrape_result = textwrap.shorten(result, width=127000)
+#    result = ''
+#    for website_info in website_infos:
+#        result.join(website_info["text"])
+#    scrape_result = textwrap.shorten(result, width=127000)
 
-    content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. " + scrape_result)
+    content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. ")
     chat_completion = client.chat.completions.create(
         messages=[
             {
@@ -76,6 +76,31 @@ def step2(prompt: str, website_infos: []) -> str:
     )
 
     return chat_completion.choices[0].message.content
+
+def step3(prompt: str, website_infos: []) -> []:
+    result_website_infos = []
+    for website_info in website_infos:
+        content = str("I will give you a subject of interest and the text of a homepage and you filter out marketing claims and spam. Make me  detailed report of all quantitative or qualitative information that are useful for the subject of interest or to answer the question in the subject. don't get distracted from the subject. Only use the information from the provided homepage.  When the homepage is marketing or spam, mark it clearly in the report, then this information is not very helpful. Just give me the detailed report, nothing else. Subject of interest:" + prompt + "Homepage: Please note: This website includes an accessibility system. Press Control-F11 to adjust the website to the visually impaired who are using a screen reader; Press Control-F10 to open an accessibility menu Accessibility. " + website_info["text"])
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": content,
+                }
+            ],
+            model=config["models"]["model"],
+        )
+
+        summary = chat_completion.choices[0].message.content
+
+        result_website_info = {
+            "text": website_info["text"],
+            "summary": summary,
+            "url": website_info["url"],
+        }
+        result_website_infos.append(result_website_info)
+
+    return result_website_infos
 
 def step2scrape(query: str) -> []:
     query = query.replace(" ", "+")
@@ -99,10 +124,9 @@ def step2scrape(query: str) -> []:
         url = str("http://localhost:8080/api/v1/scraper?url=" + link)
         html_result = requests.get(link)
         soup = BeautifulSoup(html_result.text, "html.parser")
-        page_text = soup.get_text().replace("\n", "")
+        text = soup.get_text().replace("\n", "")
         website_info = {
-            "page_text": page_text,
-            "page_summary": "",
+            "text": text,
             "url": url,
         }
         website_infos.append(website_info)
@@ -116,6 +140,7 @@ def internet_research_agent():
     step1result = step1(prompt)
     website_infos = step2scrape(step1result)
     step2result = step2(prompt, website_infos)
+    website_infos = step3(prompt, website_infos)
 
     response = {
         "step1result": step1result,
