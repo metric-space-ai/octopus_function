@@ -77,10 +77,42 @@ def step2(prompt: str, website_infos: []) -> str:
 
     return chat_completion.choices[0].message.content
 
+def step2scrape(query: str) -> []:
+    query = query.replace(" ", "+")
+    google_url = str("https://www.google.com/search?q=" + query)
+    url = str("http://localhost:8080/api/v1/scraper?url=" + google_url)
+    html_result = requests.get(url)
+    soup = BeautifulSoup(html_result.text, "html.parser")
+
+    links = []
+    website_infos = []
+    for link in soup.find_all('a'):
+        link = link.get('href')
+
+        if link and re.search("^http", link) and not re.search("google", link):
+            links.append(link)
+
+    if len(links) > 15:
+        links = links[-4:]
+
+    for link in links:
+        url = str("http://localhost:8080/api/v1/scraper?url=" + link)
+        html_result = requests.get(link)
+        soup = BeautifulSoup(html_result.text, "html.parser")
+        text = soup.get_text().replace("\n", "")
+        text = text.replace("\t", " ")
+        website_info = {
+            "text": text,
+            "url": url,
+        }
+        website_infos.append(website_info)
+
+    return website_infos
+
 def step3(prompt: str, website_infos: []) -> []:
     result_website_infos = []
     for website_info in website_infos:
-        content = str("I will give you a subject of interest and the text of a homepage and you filter out marketing claims and spam. Make me  detailed report of all quantitative or qualitative information that are useful for the subject of interest or to answer the question in the subject. don't get distracted from the subject. Only use the information from the provided homepage.  When the homepage is marketing or spam, mark it clearly in the report, then this information is not very helpful. Just give me the detailed report, nothing else. Subject of interest:" + prompt + "Homepage: Please note: This website includes an accessibility system. Press Control-F11 to adjust the website to the visually impaired who are using a screen reader; Press Control-F10 to open an accessibility menu Accessibility. " + website_info["text"])
+        content = str("I will give you a subject of interest and the text of a homepage and you filter out marketing claims and spam. Make me  detailed report of all quantitative or qualitative information that are useful for the subject of interest or to answer the question in the subject. don't get distracted from the subject. Only use the information from the provided homepage.  When the homepage is marketing or spam, mark it clearly in the report, then this information is not very helpful. Just give me the detailed report, nothing else. Subject of interest: " + prompt + " Homepage: Please note: This website includes an accessibility system. Press Control-F11 to adjust the website to the visually impaired who are using a screen reader; Press Control-F10 to open an accessibility menu Accessibility. " + website_info["text"])
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -102,36 +134,25 @@ def step3(prompt: str, website_infos: []) -> []:
 
     return result_website_infos
 
-def step2scrape(query: str) -> []:
-    query = query.replace(" ", "+")
-    google_url = str("https://www.google.com/search?q=" + query)
-    url = str("http://localhost:8080/api/v1/scraper?url=" + google_url)
-    html_result = requests.get(url)
-    soup = BeautifulSoup(html_result.text, "html.parser")
+def step4(prompt: str, strategy: str, website_infos: []) -> str:
+    content = str("I give you a subject of interest. Give me an optimal answer to the subject of interest without relativizing. Refer your source of information to make clear, where you take your information from. Additionally I give you a strategy how to give the best answer and summaries of several homepage from google search that eventually provide useful information, so you do not have to look up the information yourself. But act like you looked up google by yourself. Therefor give academic  foodnotes like [1]  in your answer to refer the source of information. Just give me the conclusion and make the answer very clear and simple without referring the strategic help I give you. Subject of interest: " + prompt + " Strategy: " + strategy)
 
-    links = []
-    website_infos = []
-    for link in soup.find_all('a'):
-        link = link.get('href')
+    i = 1
+    for website_info in website_infos:
+        content = str(content + " Summary of Homepage [" + i + "] " + website_info["url"] + " " + website_info["summary"])
+        i += 1
 
-        if link and re.search("^http", link) and not re.search("google", link):
-            links.append(link)
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": content,
+            }
+        ],
+        model=config["models"]["model"],
+    )
 
-    if len(links) > 15:
-        links = links[-15:]
-
-    for link in links:
-        url = str("http://localhost:8080/api/v1/scraper?url=" + link)
-        html_result = requests.get(link)
-        soup = BeautifulSoup(html_result.text, "html.parser")
-        text = soup.get_text().replace("\n", "")
-        website_info = {
-            "text": text,
-            "url": url,
-        }
-        website_infos.append(website_info)
-
-    return website_infos
+    return chat_completion.choices[0].message.content
 
 @app.route('/v1/internet-research-agent', methods=['POST'])
 def internet_research_agent():
@@ -141,10 +162,12 @@ def internet_research_agent():
     website_infos = step2scrape(step1result)
     step2result = step2(prompt, website_infos)
     website_infos = step3(prompt, website_infos)
+    step4result = step4(prompt, step2result, website_infos)
 
     response = {
         "step1result": step1result,
-        "response": step2result,
+        "step2result": step2result,
+        "response": step4result,
         "website_infos": website_infos,
     }
 
