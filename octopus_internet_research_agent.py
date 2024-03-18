@@ -59,11 +59,6 @@ def step1(prompt: str) -> str:
     return chat_completion.choices[0].message.content
 
 def step2(prompt: str, website_infos: []) -> str:
-#    result = ''
-#    for website_info in website_infos:
-#        result.join(website_info["text"])
-#    scrape_result = textwrap.shorten(result, width=127000)
-
     content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. ")
     chat_completion = client.chat.completions.create(
         messages=[
@@ -93,7 +88,7 @@ def step2scrape(query: str) -> []:
             links.append(link)
 
     if len(links) > 15:
-        links = links[-4:]
+        links = links[-15:]
 
     for link in links:
         url = str("http://localhost:8080/api/v1/scraper?url=" + link)
@@ -139,7 +134,7 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
 
     i = 1
     for website_info in website_infos:
-        content = str(content + " Summary of Homepage [" + i + "] " + website_info["url"] + " " + website_info["summary"])
+        content = str(content + " Summary of Homepage [" + str(i) + "] " + website_info["url"] + " " + website_info["summary"])
         i += 1
 
     chat_completion = client.chat.completions.create(
