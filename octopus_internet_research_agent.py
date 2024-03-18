@@ -58,7 +58,12 @@ def step1(prompt: str) -> str:
 
     return chat_completion.choices[0].message.content
 
-def step2(prompt: str, scrape_result: str) -> str:
+def step2(prompt: str, website_infos: []) -> str:
+    result = ''
+    for website_info in website_infos:
+        result.join(website_info["page_text"])
+    scrape_result = textwrap.shorten(result, width=127000)
+
     content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. " + scrape_result)
     chat_completion = client.chat.completions.create(
         messages=[
@@ -72,7 +77,7 @@ def step2(prompt: str, scrape_result: str) -> str:
 
     return chat_completion.choices[0].message.content
 
-def step2scrape(query: str) -> str:
+def step2scrape(query: str) -> []:
     query = query.replace(" ", "+")
     google_url = str("https://www.google.com/search?q=" + query)
     url = str("http://localhost:8080/api/v1/scraper?url=" + google_url)
@@ -80,7 +85,7 @@ def step2scrape(query: str) -> str:
     soup = BeautifulSoup(html_result.text, "html.parser")
 
     links = []
-    website_content = []
+    website_infos = []
     for link in soup.find_all('a'):
         link = link.get('href')
 
@@ -94,26 +99,28 @@ def step2scrape(query: str) -> str:
         url = str("http://localhost:8080/api/v1/scraper?url=" + link)
         html_result = requests.get(link)
         soup = BeautifulSoup(html_result.text, "html.parser")
-        website_content.append(soup.get_text())
-    
-    result = ' '.join(website_content)
-    result = result.replace("\n", "")
-    result = textwrap.shorten(result, width=127000)
+        page_text = soup.get_text().replace("\n", "")
+        website_info = {
+            "page_text": page_text,
+            "page_summary": "",
+            "url": url,
+        }
+        website_infos.append(website_info)
 
-    return result
+    return website_infos
 
 @app.route('/v1/internet-research-agent', methods=['POST'])
 def internet_research_agent():
     data = request.json
     prompt = data.get("prompt", "")
     step1result = step1(prompt)
-    step2scrape_result = step2scrape(step1result)
-    step2result = step2(prompt, step2scrape_result)
+    website_infos = step2scrape(step1result)
+    step2result = step2(prompt, website_infos)
 
     response = {
         "step1result": step1result,
-        "step2scrape_result": step2scrape_result,
         "response": step2result,
+        "website_infos": website_infos,
     }
 
     return jsonify(response), 201
