@@ -61,3 +61,6 @@ nohup flask --app octopus_anonymization run -h 0.0.0.0 -p 5007 2>&1 &
 
 # octopus_text2img_SDXL.py
 # cuda:1 - 11.5 GiB
+
+# octopus_visual_questions_answering.py
+# cuda:2

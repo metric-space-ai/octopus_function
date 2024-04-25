@@ -21,7 +21,7 @@ config_str = '''{
     },
     "required_python_version": "cp311",
     "models": {
-        "model": "gpt-4-0125-preview"
+        "model": "gpt-4-turbo-2024-04-09"
     },
     "functions": [
         {
@@ -97,6 +97,7 @@ def step2scrape(query: str) -> []:
         text = soup.get_text().replace("\n", "")
         text = text.replace("\t", " ")
         website_info = {
+            "link": link,
             "text": text,
             "url": url,
         }
@@ -121,6 +122,7 @@ def step3(prompt: str, website_infos: []) -> []:
         summary = chat_completion.choices[0].message.content
 
         result_website_info = {
+            "link": website_info["link"],
             "text": website_info["text"],
             "summary": summary,
             "url": website_info["url"],
@@ -130,15 +132,19 @@ def step3(prompt: str, website_infos: []) -> []:
     return result_website_infos
 
 def step4(prompt: str, strategy: str, website_infos: []) -> str:
-    content = str("I give you a subject of interest. Give me an optimal answer to the subject of interest without relativizing. Refer your source of information to make clear, where you take your information from. Additionally I give you a strategy how to give the best answer and summaries of several homepage from google search that eventually provide useful information, so you do not have to look up the information yourself. But act like you looked up google by yourself. Therefor give academic  foodnotes like [1]  in your answer to refer the source of information. Just give me the conclusion and make the answer very clear and simple without referring the strategic help I give you. Subject of interest: " + prompt + " Strategy: " + strategy)
+    content = str("I give you a subject of interest. Give me an optimal answer to the subject of interest without relativizing. Refer your source of information to make clear, where you take your information from. Additionally I give you a strategy how to give the best answer and summaries of several homepage from google search that eventually provide useful information. Therefor give academic footnotes like [1] in your answer to refer the URL of information. Just give me the conclusion and make the answer very clear and simple without referring the strategic help I give you. Don't explain yourself. Provide links to websites in results. Subject of interest: " + prompt + "\nStrategy:" + strategy + "\nHomepages:")
 
     i = 1
     for website_info in website_infos:
-        content = str(content + " Summary of Homepage [" + str(i) + "] " + website_info["url"] + " " + website_info["summary"])
+        content = str(content + " \nURL" + str(i) + " " + website_info["link"] + " Summary of URL" + str(i) + " " + website_info["summary"])
         i += 1
 
     chat_completion = client.chat.completions.create(
         messages=[
+            {
+                "role": "system",
+                "content": "Reply in the language the user question is asked.",
+            },
             {
                 "role": "user",
                 "content": content,
@@ -173,4 +179,4 @@ def setup():
 
     return jsonify(response), 201
 
-app.run(host = "0.0.0.0", threaded=True, )
+app.run(host = "0.0.0.0", threaded=True)

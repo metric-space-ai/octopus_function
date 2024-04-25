@@ -10,7 +10,7 @@ Octopus Server calls Octopus Function service on endpoint "/function-name" with 
   "progress": integer,
   "estimated_response_at": DateTime,
   "response": string,
-  "file_attachements": [
+  "file_attachments": [
     {
       "content": string,
       "file_name": string,
@@ -35,7 +35,7 @@ In case if AI function can return a response in less than 5 seconds it can retur
   "progress": 100,
   "estimated_response_at": "2023-08-01 19:50:47+00",
   "response": "some text response from the system",
-  "file_attachements": []
+  "file_attachments": []
 }
 
 In case if AI function can not return a response in less than 5 seconds, it can return a partial response i.e.
@@ -46,7 +46,7 @@ In case if AI function can not return a response in less than 5 seconds, it can 
   "progress": 0,
   "estimated_response_at": "2023-08-01 19:50:47+00",
   "response": null,
-  "file_attachements": []
+  "file_attachments": []
 }
 
 If the octopus server will not receive a response with the status "Processed" it will poll for a response from the AI function on endpoint "/function-name/:id"
@@ -63,7 +63,7 @@ Should return responses like
   "progress": 20,
   "estimated_response_at": "2023-08-01 19:51:00+00",
   "response": null,
-  "file_attachements": []
+  "file_attachments": []
 }
 
 In case if AI function is still processing the response.
@@ -76,7 +76,7 @@ Or response like
   "progress": 100,
   "estimated_response_at": "2023-08-01 19:52:00+00",
   "response": "some response from API",
-  "file_attachements": [
+  "file_attachments": [
     {
       "content": "asdfasdfjsadglksjadglkasdjg adfgafdgf",
       "file_name": "test.txt",
