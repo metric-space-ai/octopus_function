@@ -91,7 +91,7 @@ def step2scrape(query: str) -> []:
         links = links[-15:]
 
     for link in links:
-        url = str("http://localhost:8080/api/v1/scraper-service?url=" + link)
+        url = str("http://localhost:8080/api/v1/scraper?url=" + link)
         html_result = requests.get(link)
         soup = BeautifulSoup(html_result.text, "html.parser")
         text = soup.get_text().replace("\n", "")

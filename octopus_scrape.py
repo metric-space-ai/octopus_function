@@ -1,6 +1,7 @@
 import os
 
 dependencies = [
+    'pip install -q blinker==1.7.0',
     'pip install -q fake-useragent==1.5.1',
     'pip install -q Flask==3.0.3',
     'pip install -q openpyxl==3.1.2',
