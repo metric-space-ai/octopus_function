@@ -2,8 +2,8 @@ import os
 
 dependencies = [
     'pip install -q beautifulsoup4==4.12.3',
-    'pip install -q Flask==3.0.2',
-    'pip install -q openai==1.14.0',
+    'pip install -q Flask==3.0.3',
+    'pip install -q openai==1.30.1',
     'pip install -q requests==2.31.0',
 ]
 
@@ -21,7 +21,7 @@ config_str = '''{
     },
     "required_python_version": "cp311",
     "models": {
-        "model": "gpt-4-turbo-2024-04-09"
+        "model": "gpt-4o-2024-05-13"
     },
     "functions": [
         {
@@ -91,7 +91,7 @@ def step2scrape(query: str) -> []:
         links = links[-15:]
 
     for link in links:
-        url = str("http://localhost:8080/api/v1/scraper?url=" + link)
+        url = str("http://localhost:8080/api/v1/scraper-service?url=" + link)
         html_result = requests.get(link)
         soup = BeautifulSoup(html_result.text, "html.parser")
         text = soup.get_text().replace("\n", "")

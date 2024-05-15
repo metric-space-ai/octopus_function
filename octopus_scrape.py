@@ -271,7 +271,7 @@ def scrape_url_with_timeout(url):
 
 app = Flask(__name__)
 
-@app.route('/v1/google-search', methods=['POST'])
+@app.route('/v1/google_search', methods=['POST'])
 def function_google_search():
     data = request.json
     search_prompt = data.get("search_prompt", "")
@@ -286,7 +286,7 @@ def function_google_search():
 
     return jsonify(response), 201
 
-@app.route('/v1/scrape-url', methods=['POST'])
+@app.route('/v1/scrape_url', methods=['POST'])
 def function_scrape_url():
     data = request.json
     url = data.get("url", "")
