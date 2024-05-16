@@ -132,7 +132,7 @@ def step3(prompt: str, website_infos: []) -> []:
     return result_website_infos
 
 def step4(prompt: str, strategy: str, website_infos: []) -> str:
-    content = str("I give you a subject of interest. Give me an optimal answer to the subject of interest without relativizing. Refer your source of information to make clear, where you take your information from. Additionally I give you a strategy how to give the best answer and summaries of several homepage from google search that eventually provide useful information. Therefor give academic footnotes like [1] in your answer to refer the URL of information. Just give me the conclusion and make the answer very clear and simple without referring the strategic help I give you. Don't explain yourself. Provide links to websites in results. Don't halucinate links. Use only provided links. Try to create longer report. Subject of interest: " + prompt + "\nStrategy:" + strategy + "\nHomepages:")
+    content = str("I give you a subject of interest, a strategy and several source of information. \n\nGive me an optimal answer to the subject of interest without relativizing by using the provided source of information with academic footnotes like [1] followed by the corresponding URL. Just give me the conclusion and make the answer very clear and simple without referring the strategy again. Don't explain yourself. \n\nSubject of interest:\n "+ prompt + "\n\nStrategy:\n"
 
     i = 1
     for website_info in website_infos:
