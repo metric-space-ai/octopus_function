@@ -132,11 +132,11 @@ def step3(prompt: str, website_infos: []) -> []:
     return result_website_infos
 
 def step4(prompt: str, strategy: str, website_infos: []) -> str:
-    content = str("I give you a subject of interest, a strategy and several source of information. \n\nGive me an optimal answer to the subject of interest without relativizing by using the provided source of information with academic footnotes like [1] followed by the corresponding URL. Just give me the conclusion and make the answer very clear and simple without referring the strategy again. Don't explain yourself. \n\nSubject of interest:\n "+ prompt + "\n\nStrategy:\n"
+    content = str("I give you a subject of interest, a strategy and several source of information. \n\nGive me an optimal answer to the subject of interest without relativizing by using the provided source of information with academic footnotes like [1] followed by the corresponding URL. Just give me the conclusion and make the answer very clear and simple without referring the strategy again. Don't explain yourself. \n\nSubject of interest:\n "+ prompt + "\n\nStrategy:\n")
 
     i = 1
     for website_info in website_infos:
-        content = str(content + " \n\n\n\nURL" + str(i) + " " + website_info["link"] + " Summary of URL" + str(i) + " " + website_info["summary"])
+        content = str(content + " \n\n\n\nURL" + str(i) + " \n" + website_info["link"] + " \n\nSummary of URL" + str(i) + " \n" + website_info["summary"])
         i += 1
 
     chat_completion = client.chat.completions.create(
