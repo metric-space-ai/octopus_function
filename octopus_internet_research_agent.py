@@ -74,25 +74,16 @@ def step2(prompt: str, website_infos: []) -> str:
 
 def step2scrape(query: str) -> []:
     query = query.replace(" ", "+")
-    google_url = str("https://www.google.com/search?q=" + query)
-    url = str("http://localhost:8080/api/v1/scraper?url=" + google_url)
+    url = str("http://localhost:8080/api/v1/scraper-search-service?prompt=" + query)
     html_result = requests.get(url)
-    soup = BeautifulSoup(html_result.text, "html.parser")
 
-    links = []
+    links = html_result.json()
     website_infos = []
-    for link in soup.find_all('a'):
-        link = link.get('href')
-
-        if link and re.search("^http", link) and not re.search("google", link):
-            links.append(link)
-
-    if len(links) > 15:
-        links = links[-15:]
 
     for link in links:
-        url = str("http://localhost:8080/api/v1/scraper?url=" + link)
-        html_result = requests.get(link)
+        url = str("http://localhost:8080/api/v1/scraper-service?url=" + link)
+
+        html_result = requests.get(url)
         soup = BeautifulSoup(html_result.text, "html.parser")
         text = soup.get_text().replace("\n", "")
         text = text.replace("\t", " ")
@@ -143,7 +134,7 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "Reply in the language the user question is asked.",
+                "content": "Reply in the language the user question is asked. Don't halucinate links. Use only provided links. Try to create longer report.",
             },
             {
                 "role": "user",
