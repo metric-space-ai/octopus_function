@@ -10,7 +10,7 @@ dependencies = [
 for command in dependencies:
     os.system(command)
 
-import json, re, requests, textwrap
+import json, re, requests, textwrap, time
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, request
 from openai import OpenAI
@@ -45,6 +45,7 @@ app = Flask(__name__)
 client = OpenAI()
 
 def step1(prompt: str) -> str:
+    print("step1")
     content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. Here is the thing: " + prompt)
     chat_completion = client.chat.completions.create(
         messages=[
@@ -59,6 +60,7 @@ def step1(prompt: str) -> str:
     return chat_completion.choices[0].message.content
 
 def step2(prompt: str, website_infos: []) -> str:
+    print("step2")
     content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. ")
     chat_completion = client.chat.completions.create(
         messages=[
@@ -73,16 +75,32 @@ def step2(prompt: str, website_infos: []) -> str:
     return chat_completion.choices[0].message.content
 
 def step2scrape(query: str) -> []:
-    query = query.replace(" ", "+")
-    url = str("http://localhost:8080/api/v1/scraper-search-service?prompt=" + query)
-    html_result = requests.get(url)
-
-    links = html_result.json()
+    print("step2scrape")
+    links = []
     website_infos = []
 
+    query = query.replace(" ", "+")
+    url = str("http://localhost:8080/api/v1/scraper-search-service?prompt=" + query)
+
+    while True:
+        try:
+            print("request")
+            print("url")
+            print(url)
+            html_result = requests.get(url)
+            links_json = html_result.json()
+            if len(links_json) > 0:
+                links = links_json
+                break
+        except:
+            print("sleeping")
+            time.sleep(5)
+
+    print("links")
+    print(links)
     for link in links:
         url = str("http://localhost:8080/api/v1/scraper-service?url=" + link)
-
+        print(url)
         html_result = requests.get(url)
         soup = BeautifulSoup(html_result.text, "html.parser")
         text = soup.get_text().replace("\n", "")
@@ -97,6 +115,7 @@ def step2scrape(query: str) -> []:
     return website_infos
 
 def step3(prompt: str, website_infos: []) -> []:
+    print("step3")
     result_website_infos = []
     for website_info in website_infos:
         content = str("I will give you a subject of interest and the text of a homepage and you filter out marketing claims and spam. Make me  detailed report of all quantitative or qualitative information that are useful for the subject of interest or to answer the question in the subject. don't get distracted from the subject. Only use the information from the provided homepage.  When the homepage is marketing or spam, mark it clearly in the report, then this information is not very helpful. Just give me the detailed report, nothing else. Subject of interest: " + prompt + " Homepage: Please note: This website includes an accessibility system. Press Control-F11 to adjust the website to the visually impaired who are using a screen reader; Press Control-F10 to open an accessibility menu Accessibility. " + website_info["text"])
@@ -119,17 +138,20 @@ def step3(prompt: str, website_infos: []) -> []:
             "url": website_info["url"],
         }
         result_website_infos.append(result_website_info)
-
+    print("result_website_infos")
+    print(result_website_infos)
     return result_website_infos
 
 def step4(prompt: str, strategy: str, website_infos: []) -> str:
+    print("step4")
     content = str("I give you a subject of interest, a strategy and several source of information. \n\nGive me an optimal answer to the subject of interest without relativizing by using the provided source of information with academic footnotes like [1] followed by the corresponding URL. Just give me the conclusion and make the answer very clear and simple without referring the strategy again. Don't explain yourself. \n\nSubject of interest:\n "+ prompt + "\n\nStrategy:\n")
 
     i = 1
     for website_info in website_infos:
         content = str(content + " \n\n\n\nURL" + str(i) + " \n" + website_info["link"] + " \n\nSummary of URL" + str(i) + " \n" + website_info["summary"])
         i += 1
-
+    print("content")
+    print(content)
     chat_completion = client.chat.completions.create(
         messages=[
             {
@@ -148,8 +170,11 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
 
 @app.route('/v1/internet_research_agent', methods=['POST'])
 def internet_research_agent():
+    print("internet_research_agent")
     data = request.json
     prompt = data.get("prompt", "")
+    print("prompt")
+    print(prompt)
     step1result = step1(prompt)
     website_infos = step2scrape(step1result)
     step2result = step2(prompt, website_infos)
