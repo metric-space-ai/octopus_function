@@ -89,6 +89,11 @@ def step2scrape(query: str) -> []:
             print(url)
             html_result = requests.get(url)
             links_json = html_result.json()
+            print(type(links_json))
+            if (type(links_json) is dict) == True:
+                raise Exception('Wrong data!')
+            if (type(links_json) is list) == False:
+                raise Exception('Wrong data!')
             if len(links_json) > 0:
                 links = links_json
                 break
