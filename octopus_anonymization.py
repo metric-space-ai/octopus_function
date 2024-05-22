@@ -177,13 +177,16 @@ class ModelManager:
             generated_part = extract_last_assistant_response(output_text_1)
 
             
-            try:
-                entities = re.search(r"\{.*?\}", generated_part, re.DOTALL).group(0)
-                data_dict = eval(entities)
-                formatted_json = json.dumps(data_dict, indent=4)
-            except:
+            
+            entities = re.search(r"\{.*?\}", generated_part, re.DOTALL).group(0)
+            if entities is None:
                 print('wrong entities format : ')
                 print(generated_part)
+                return {response: "Entities Error Format"}
+            else:
+                data_dict = eval(entities)
+                formatted_json = json.dumps(data_dict, indent=4)
+
 
             
 
