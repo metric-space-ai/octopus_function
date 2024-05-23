@@ -46,7 +46,7 @@ client = OpenAI()
 
 def step1(prompt: str) -> str:
     print("step1")
-    content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. Here is the thing: " + prompt)
+    content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. If user wants to compare things, you can suggest a few different prompts separated with semicolon ; character. Here is the thing: " + prompt)
     chat_completion = client.chat.completions.create(
         messages=[
             {
@@ -74,32 +74,36 @@ def step2(prompt: str, website_infos: []) -> str:
 
     return chat_completion.choices[0].message.content
 
-def step2scrape(query: str) -> []:
+def step2scrape(prompt: str) -> []:
     print("step2scrape")
     links = []
     website_infos = []
 
-    query = query.replace(" ", "+")
-    url = str("http://localhost:8080/api/v1/scraper-search-service?prompt=" + query)
+    queries = prompt.split(";")
+    for query in queries:
+        query = query.replace(" ", "+")
+        url = str("http://localhost:8080/api/v1/scraper-search-service?prompt=" + query)
 
-    while True:
-        try:
-            print("request")
-            print("url")
-            print(url)
-            html_result = requests.get(url)
-            links_json = html_result.json()
-            print(type(links_json))
-            if (type(links_json) is dict) == True:
-                raise Exception('Wrong data!')
-            if (type(links_json) is list) == False:
-                raise Exception('Wrong data!')
-            if len(links_json) > 0:
-                links = links_json
-                break
-        except:
-            print("sleeping")
-            time.sleep(5)
+        while True:
+            try:
+                print("request")
+                print("url")
+                print(url)
+                html_result = requests.get(url)
+                links_json = html_result.json()
+                print(type(links_json))
+                if (type(links_json) is dict) == True:
+                    raise Exception('Wrong data!')
+                if (type(links_json) is list) == False:
+                    raise Exception('Wrong data!')
+                if len(links_json) > 0:
+                    for link_json in links_json:
+                        if link_json not in links:
+                            links.append(link_json)
+                    break
+            except:
+                print("sleeping")
+                time.sleep(5)
 
     print("links")
     print(links)
