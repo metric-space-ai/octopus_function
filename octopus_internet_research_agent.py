@@ -161,7 +161,7 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "Reply in the language the user question is asked. Don't halucinate links. Use only provided links. Make sure you provide links. Try to create longer report.",
+                "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create longer report.",
             },
             {
                 "role": "user",
@@ -181,6 +181,8 @@ def internet_research_agent():
     print("prompt")
     print(prompt)
     step1result = step1(prompt)
+    print("step1result")
+    print(step1result)
     website_infos = step2scrape(step1result)
     step2result = step2(prompt, website_infos)
     website_infos = step3(prompt, website_infos)
