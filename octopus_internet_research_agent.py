@@ -46,7 +46,7 @@ client = OpenAI()
 
 def step1(prompt: str) -> str:
     print("step1")
-    content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. If user wants to compare things, you can suggest a few different prompts separated with semicolon ; character. Here is the thing: " + prompt)
+    content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. If user has a complex research task for example compare things, you can suggest a few different prompts separated with semicolon ; character to cover different information sources. Here is the thing: " + prompt)
     chat_completion = client.chat.completions.create(
         messages=[
             {
@@ -165,7 +165,7 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create longer report.",
+                "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create a comprehensive report.",
             },
             {
                 "role": "user",
