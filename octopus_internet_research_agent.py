@@ -161,7 +161,7 @@ def step4(prompt: str, strategy: str, website_infos: []) -> str:
         messages=[
             {
                 "role": "system",
-                "content": "Reply in the language the user question is asked. Don't halucinate links. Use only provided links. Try to create longer report.",
+                "content": "Reply in the language the user question is asked. Don't halucinate links. Use only provided links. Make sure you provide links. Try to create longer report.",
             },
             {
                 "role": "user",
