@@ -43,6 +43,7 @@ config_str = '''{
     "functions": [
         {
             "name": "google_search",
+            "display_name": "Google search",
             "description": "Google search function.",
             "parameters": {
                 "type": "object",
@@ -56,6 +57,7 @@ config_str = '''{
         },
         {
             "name": "scrape_url",
+            "display_name": "Scrape url",
             "description": "Url scrape function.",
             "parameters": {
                 "type": "object",

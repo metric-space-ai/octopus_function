@@ -30,6 +30,7 @@ config = """{
     "functions": [
         {
             "name": "function-foo-sync",
+            "display_name": "Synchronous communication test",
             "description": "Synchronous communication test function",
             "parameters": {
                 "type": "object",

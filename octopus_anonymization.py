@@ -56,6 +56,7 @@ config_str = """
     },
     "functions": [{
         "name": "Anonymization",
+        "display_name": "Anonymization",
         "description": "Extract entities and Anonymize",
         "parameters": {
             "type": "object",

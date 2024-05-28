@@ -76,6 +76,7 @@ config_str = '''{
     "functions": [
         {
             "name": "function_translator",
+            "display_name": "Translator",
             "description": "Translator function",
             "parameters": {
                 "type": "object",

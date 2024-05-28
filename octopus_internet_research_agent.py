@@ -26,6 +26,7 @@ config_str = '''{
     "functions": [
         {
             "name": "internet_research_agent",
+            "display_name": "Internet research agent",
             "description": "The Internet Research Agent performs comprehensive online research based on a user's query. Use this function for tasks such as gathering detailed information, comparing products, or finding the latest research on a topic. Examples: (1) Comparing features of different industrial printers; (2) Finding the latest studies on coating technologies; (3) Gathering market trends in the printing industry. Use this function only when user wants to check internet.",
             "parameters": {
                 "type": "object",
@@ -39,6 +40,7 @@ config_str = '''{
         },
         {
             "name": "internet_research_urls",
+            "display_name": "Internet research urls",
             "description": "The Internet Research Urls performs comprehensive online research based on a user's query with given urls. Use this function only when user wants to check internet.",
             "parameters": {
                 "type": "object",

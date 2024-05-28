@@ -55,6 +55,7 @@ config_str = """
     },
     "functions": [{
         "name": "sensitive-information",
+        "display_name": "Sensitive information filter",
         "description": "Predicts if the user input is sensitive and shows sensitive info",
         "parameters": {
             "type": "object",

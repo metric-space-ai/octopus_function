@@ -51,6 +51,7 @@ config_str = '''
      "functions": [
          {
              "name": "orbit-camera",
+             "display_name": "Orbit camera",
              "description": "This function renders a .png image of a 3D model of AFK machine. You can control from what point in space the image is taken. The camera orbits around the machine, and its position is controlled by position argument. This function is useful to get an overview of the AFK machine from a given angle or a view of a particular section of the machine.",
              "parameters": {
                  "type": "object",
@@ -82,6 +83,7 @@ config_str = '''
          },
          {
              "name": "find-part",
+             "display_name": "Find part",
              "description": "This function renders a .png image, showing the selected part in full view, of a 3D model of AFK machine. The part gets highlighted with a magenta color. The camera is floating on one side of the machine, and it is moved and zoomed in to the selected part. This function is helpful for getting to know how parts of the AFK machines look and how are mounted or placed on the machine.",
              "parameters": {
                  "type": "object",

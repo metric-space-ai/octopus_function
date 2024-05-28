@@ -59,6 +59,7 @@ config_str = '''
     "functions": [
         {
             "name": "text-to-image",
+            "display_name": "Text to image",
             "description": "Generates an image based on a positive and negative prompt",
             "parameters": {
                 "type": "object",

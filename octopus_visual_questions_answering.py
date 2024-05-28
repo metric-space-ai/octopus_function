@@ -47,6 +47,7 @@ config_str = '''
     "functions": [
         {
             "name": "VQA",
+            "display_name": "Visual question answering",
             "description": "Visual question answering. Answers a question based on an image",
             "parameters": {
                 "type": "object",
