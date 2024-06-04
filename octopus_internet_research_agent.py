@@ -63,33 +63,43 @@ def ira_step1(prompt: str) -> str:
     print("ira_step1")
     print("prompt")
     print(prompt)
-    content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. If user has a complex research task for example compare things, you can suggest a few different prompts separated with semicolon ; character to cover different information sources. Here is the thing: " + prompt)
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
-        model=config["models"]["model"],
-    )
 
-    return chat_completion.choices[0].message.content
+    while True:
+        try:
+            content = str("I want to check the internet for the following thing. What is the best google search input to get the best results? Give me the google search input, nothing else. If user has a complex research task for example compare things, you can suggest a few different prompts separated with semicolon ; character to cover different information sources. Here is the thing: " + prompt)
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
+
+            return chat_completion.choices[0].message.content
+        except:
+            print("some OpenAI problem")
 
 def ira_step2(prompt: str, website_infos: []) -> str:
     print("ira_step2")
-    content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. ")
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
-        model=config["models"]["model"],
-    )
 
-    return chat_completion.choices[0].message.content
+    while True:
+        try:
+            content = str("I will give you summaries of homepages that eventually provide useful information for the subject of interest: \"" + prompt + "\" Make a plan how to come to a good answer to the subject of interest. ")
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
+
+            return chat_completion.choices[0].message.content
+        except:
+            print("some OpenAI problem")
 
 def ira_step2scrape(prompt: str) -> []:
     print("ira_step2scrape")
@@ -144,26 +154,29 @@ def ira_step3(prompt: str, website_infos: []) -> []:
     print("ira_step3")
     result_website_infos = []
     for website_info in website_infos:
-        content = str("I will give you a subject of interest and the text of a homepage and you filter out marketing claims and spam. Make me  detailed report of all quantitative or qualitative information that are useful for the subject of interest or to answer the question in the subject. don't get distracted from the subject. Only use the information from the provided homepage.  When the homepage is marketing or spam, mark it clearly in the report, then this information is not very helpful. Just give me the detailed report, nothing else. Subject of interest: " + prompt + " Homepage: Please note: This website includes an accessibility system. Press Control-F11 to adjust the website to the visually impaired who are using a screen reader; Press Control-F10 to open an accessibility menu Accessibility. " + website_info["text"])
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": content,
-                }
-            ],
-            model=config["models"]["model"],
-        )
+        try:
+            content = str("I will give you a subject of interest and the text of a homepage and you filter out marketing claims and spam. Make me  detailed report of all quantitative or qualitative information that are useful for the subject of interest or to answer the question in the subject. don't get distracted from the subject. Only use the information from the provided homepage.  When the homepage is marketing or spam, mark it clearly in the report, then this information is not very helpful. Just give me the detailed report, nothing else. Subject of interest: " + prompt + " Homepage: Please note: This website includes an accessibility system. Press Control-F11 to adjust the website to the visually impaired who are using a screen reader; Press Control-F10 to open an accessibility menu Accessibility. " + website_info["text"])
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
 
-        summary = chat_completion.choices[0].message.content
+            summary = chat_completion.choices[0].message.content
 
-        result_website_info = {
-            "link": website_info["link"],
-            "text": website_info["text"],
-            "summary": summary,
-            "url": website_info["url"],
-        }
-        result_website_infos.append(result_website_info)
+            result_website_info = {
+                "link": website_info["link"],
+                "text": website_info["text"],
+                "summary": summary,
+                "url": website_info["url"],
+            }
+            result_website_infos.append(result_website_info)
+        except:
+            print("some OpenAI problem")
     print("result_website_infos")
     print(result_website_infos)
     return result_website_infos
@@ -178,46 +191,56 @@ def ira_step4(prompt: str, strategy: str, website_infos: []) -> str:
         i += 1
     print("content")
     print(content)
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create a very long report.",
-            },
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
-        model=config["models"]["model"],
-    )
 
-    return chat_completion.choices[0].message.content
+    while True:
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create a very long report.",
+                    },
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
+
+            return chat_completion.choices[0].message.content
+        except:
+            print("some OpenAI problem")
 
 def iru_step1(prompt: str) -> []:
     print("iru_step1")
-    content = str("User provides in prompt what he want to do with certain website and url. Return this data as formated json of array of objects with keys: what_to_do, url. Here is the prompt: " + prompt)
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
-        model=config["models"]["model"],
-    )
 
-    result = chat_completion.choices[0].message.content
+    while True:
+        try:
+            content = str("User provides in prompt what he want to do with certain website and url. Return this data as formated json of array of objects with keys: what_to_do, url. Here is the prompt: " + prompt)
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
 
-    if "```json" in result:
-        result = result.lstrip("```json")
+            result = chat_completion.choices[0].message.content
 
-    if "```" in result:
-        result = result.rstrip("```")
+            if "```json" in result:
+                result = result.lstrip("```json")
 
-    result = json.loads(result)
+            if "```" in result:
+                result = result.rstrip("```")
 
-    return result
+            result = json.loads(result)
+
+            return result
+        except:
+            print("some OpenAI problem")
 
 def iru_step2scrape(websites: []) -> []:
     print("iru_step2scrape")
@@ -248,27 +271,30 @@ def iru_step3(website_infos: []) -> []:
     print("iru_step3")
     result_website_infos = []
     for website_info in website_infos:
-        content = str("I will give you a user command and website text and you will provide the answer. User command: " + website_info["what_to_do"] + " Website text: " + website_info["text"])
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": content,
-                }
-            ],
-            model=config["models"]["model"],
-        )
+        try:
+            content = str("I will give you a user command and website text and you will provide the answer. User command: " + website_info["what_to_do"] + " Website text: " + website_info["text"])
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
 
-        result = chat_completion.choices[0].message.content
+            result = chat_completion.choices[0].message.content
 
-        result_website_info = {
-            "link": website_info["link"],
-            "text": website_info["text"],
-            "result": result,
-            "url": website_info["url"],
-            "what_to_do": website_info["what_to_do"],
-        }
-        result_website_infos.append(result_website_info)
+            result_website_info = {
+                "link": website_info["link"],
+                "text": website_info["text"],
+                "result": result,
+                "url": website_info["url"],
+                "what_to_do": website_info["what_to_do"],
+            }
+            result_website_infos.append(result_website_info)
+        except:
+            print("some OpenAI problem")
     print("result_website_infos")
     print(result_website_infos)
     return result_website_infos
@@ -283,21 +309,26 @@ def iru_step4(website_infos: []) -> str:
         i += 1
     print("content")
     print(content)
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create a very long report.",
-            },
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
-        model=config["models"]["model"],
-    )
 
-    return chat_completion.choices[0].message.content
+    while True:
+        try:
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Reply in the language the user question is asked. Make sure you provide links in your response. Try to create a very long report.",
+                    },
+                    {
+                        "role": "user",
+                        "content": content,
+                    }
+                ],
+                model=config["models"]["model"],
+            )
+
+            return chat_completion.choices[0].message.content
+        except:
+            print("some OpenAI problem")
 
 @app.route('/v1/internet_research_agent', methods=['POST'])
 def internet_research_agent():
