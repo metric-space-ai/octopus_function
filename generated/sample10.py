@@ -8,6 +8,7 @@ for command in dependencies:
     os.system(command)
 
 import json
+import math
 from flask import Flask, jsonify, request
 
 config_str = '''{
@@ -18,13 +19,13 @@ config_str = '''{
     "required_python_version": "cp312",
     "functions": [
         {
-            "name": "calculate_perimeter",
-            "display_name": "Calculate Perimeter",
-            "description": "This function calculates the perimeter of a square for a given side length.",
+            "name": "calculate_area",
+            "display_name": "Calculate Area of Pentagon",
+            "description": "This function calculates the area of a regular pentagon for a given side length.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "side_length": { "type": "number", "description": "The side length of the square" }
+                    "side_length": { "type": "number", "description": "The side length of the pentagon" }
                 },
                 "required": ["side_length"]
             },
@@ -32,13 +33,13 @@ config_str = '''{
             "return_type": "application/json"
         },
         {
-            "name": "calculate_area",
-            "display_name": "Calculate Area",
-            "description": "This function calculates the area of a square for a given side length.",
+            "name": "calculate_perimeter",
+            "display_name": "Calculate Perimeter of Pentagon",
+            "description": "This function calculates the perimeter of a regular pentagon for a given side length.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "side_length": { "type": "number", "description": "The side length of the square" }
+                    "side_length": { "type": "number", "description": "The side length of the pentagon" }
                 },
                 "required": ["side_length"]
             },
@@ -51,28 +52,23 @@ config_str = '''{
 config = json.loads(config_str)
 app = Flask(__name__)
 
-class SquareCalculator:
-    def __init__(self, side_length):
-        self.side_length = side_length
+def calculate_pentagon_area(side_length):
+    return (1/4) * math.sqrt(5 * (5 + 2 * math.sqrt(5))) * side_length ** 2
 
-    def calculate_area(self):
-        return self.side_length ** 2
-
-    def calculate_perimeter(self):
-        return 4 * self.side_length
+def calculate_pentagon_perimeter(side_length):
+    return 5 * side_length
 
 @app.route('/v1/calculate_area', methods=['POST'])
 def calculate_area():
     data = request.json
     side_length = data.get("side_length", None)
 
-    if side_length is None or not isinstance(side_length, (int, float)) or side_length < 0:
-        return jsonify({"error": "Invalid input. It must be a non-negative number."}), 400
+    if side_length is None or not isinstance(side_length, (int, float)) or side_length <= 0:
+        return jsonify({"error": "Invalid input. 'side_length' must be a positive number."}), 400
 
-    calculator = SquareCalculator(side_length)
-    result = calculator.calculate_area()
+    area = calculate_pentagon_area(side_length)
     response = {
-        "response": str(result),
+        "response": str(area),
     }
     return jsonify(response), 201
 
@@ -81,13 +77,12 @@ def calculate_perimeter():
     data = request.json
     side_length = data.get("side_length", None)
 
-    if side_length is None or not isinstance(side_length, (int, float)) or side_length < 0:
-        return jsonify({"error": "Invalid input. It must be a non-negative number."}), 400
+    if side_length is None or not isinstance(side_length, (int, float)) or side_length <= 0:
+        return jsonify({"error": "Invalid input. 'side_length' must be a positive number."}), 400
 
-    calculator = SquareCalculator(side_length)
-    result = calculator.calculate_perimeter()
+    perimeter = calculate_pentagon_perimeter(side_length)
     response = {
-        "response": str(result),
+        "response": str(perimeter),
     }
     return jsonify(response), 201
 

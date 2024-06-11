@@ -1,10 +1,9 @@
-
 import os
 
 dependencies = [
     "pip install -q Flask==3.0.3",
     "pip install -q nc_py_api==0.13.0",
-    "pip install -q python-dotenv==1.0.0"
+    "pip install -q python-dotenv==1.0.1"
 ]
 
 for command in dependencies:
@@ -23,7 +22,7 @@ config_str = '''{
         "cuda:0": "10GiB",
         "cpu": "30GiB"
     },
-    "required_python_version": "cp311",
+    "required_python_version": "cp312",
     "functions": [
         {
             "name": "list_files",
