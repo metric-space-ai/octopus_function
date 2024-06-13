@@ -65,7 +65,7 @@ def convert_pdf_to_md():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
-    temp_pdf_path = "/tmp/temp.pdf"
+    temp_pdf_path = f"/tmp/temp_{os.urandom(8).hex()}.pdf"
     with open(temp_pdf_path, 'wb') as temp_pdf:
         temp_pdf.write(response.content)
 
