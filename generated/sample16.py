@@ -16,7 +16,7 @@ import threading
 import queue
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from ollama import generate
+from ollama import chat
 
 load_dotenv()
 
@@ -32,14 +32,14 @@ config_str = '''{
     ],
     "functions": [
         {
-            "name": "generate_ollama_response",
-            "display_name": "Generate Ollama Response",
-            "description": "Generate a response from a specified Ollama model with the given prompt.",
+            "name": "ask_ollama",
+            "display_name": "Ask Ollama Model",
+            "description": "Send a prompt to desired Ollama model.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "model": { "type": "string", "description": "The Ollama model to use" },
-                    "prompt": { "type": "string", "description": "The prompt to send" }
+                    "model": { "type": "string", "description": "Name of the Ollama model" },
+                    "prompt": { "type": "string", "description": "Prompt or question to send" }
                 },
                 "required": ["model", "prompt"]
             },
@@ -57,21 +57,22 @@ OLLAMA_HOST = os.getenv('OLLAMA_HOST')
 def get_ollama_response(model, prompt):
     response_queue = queue.Queue()
 
-    def process_generate():
+    def process_chat():
+        messages = [{'role': 'user', 'content': prompt}]
         try:
-            for part in generate(model, prompt, stream=True):
-                response_part = part['response']
-                response_queue.put(response_part)
+            for part in chat(model, messages=messages, stream=True):
+                token = part['message']['content']
+                response_queue.put(token)
         finally:
             response_queue.put(None)  # Sentinel to mark the end of the stream
 
-    thread = threading.Thread(target=process_generate)
+    thread = threading.Thread(target=process_chat)
     thread.start()
 
     return response_queue
 
-@app.route('/v1/generate_ollama_response', methods=['POST'])
-def generate_ollama_response():
+@app.route('/v1/ask_ollama', methods=['POST'])
+def ask_ollama():
     data = request.json
     model = data.get("model")
     prompt = data.get("prompt")
@@ -86,10 +87,10 @@ def generate_ollama_response():
     response_text = ""
     while time.time() < end_time:
         try:
-            part = response_queue.get(timeout=0.1)
-            if part is None:
+            token = response_queue.get(timeout=0.1)
+            if token is None:
                 break
-            response_text += part
+            response_text += token
         except queue.Empty:
             continue
 
