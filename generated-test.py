@@ -1,46 +1,45 @@
+
 import os
 
 dependencies = [
-    "pip install -q einops==0.8.0",
-    "pip install -q flash-attn==2.5.8",
-    "pip install -q timm==1.0.7",
     "pip install -q Flask==3.0.3",
     "pip install -q torch==2.3.1",
-    "pip install -q transformers==4.41.2",
-    "pip install -q requests==2.32.3",
-    "pip install -q Pillow==10.3.0"
+    "pip install -q opencv-python==4.10.0.84",
+    "pip install -q torchvision==0.18.1",
 ]
 
 for command in dependencies:
     os.system(command)
 
 import json
-import requests
-from flask import Flask, jsonify, request
-from PIL import Image
 import torch
-import subprocess
-from transformers import AutoProcessor, AutoModelForCausalLM
+import cv2
+from flask import Flask, jsonify, request
+from depth_anything_v2.dpt import DepthAnythingV2
+import base64
+import numpy as np
+from io import BytesIO
 
 config_str = '''{
     "device_map": {
         "cuda:0": "16GiB",
+        "cuda:1": "16GiB",
         "cpu": "32GiB"
     },
     "required_python_version": "cp312",
     "models": {
-        "model": "microsoft/Florence-2-large-ft"
+        "model": "DepthAnythingV2"
     },
     "functions": [
         {
-            "name": "generate_image_response",
-            "display_name": "Generate Image Response",
-            "description": "This function generates a response for a given image URL and prompt using Florence-2 model.",
+            "name": "depth_estimation",
+            "display_name": "Depth Estimation with DepthAnything V2",
+            "description": "Perform depth estimation on an image provided as URL with a prompt.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "image_url": { "type": "string", "description": "URL of the image" },
-                    "prompt": { "type": "string", "description": "Prompt to specify the task" }
+                    "image_url": { "type": "string", "description": "URL of the image to process" },
+                    "prompt": { "type": "string", "description": "Prompt to explain what is expected" }
                 },
                 "required": ["image_url", "prompt"]
             },
@@ -80,44 +79,60 @@ def select_device():
 
 device = select_device()
 
+model = None
+
 @app.route("/v1/setup", methods=["POST"])
 def setup():
-    global model, processor
-    model_id = config["models"]["model"]
-    model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, torch_dtype=torch.bfloat16)
-    processor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)
+    global model
+    model = DepthAnythingV2(encoder='vitl', features=256, out_channels=[256, 512, 1024, 1024])
+    model.load_state_dict(torch.load('checkpoints/depth_anything_v2_vitl.pth', map_location=device))
+    model.eval()
     model.to(device)
     response = {"setup": "Performed"}
     return jsonify(response), 201
 
-@app.route('/v1/generate_image_response', methods=['POST'])
-def generate_image_response():
+@app.route('/v1/depth_estimation', methods=['POST'])
+def depth_estimation():
     data = request.json
-    image_url = data.get("image_url", None)
-    prompt = data.get("prompt", None)
+    image_url = data.get('image_url')
+    prompt = data.get('prompt')
 
     if not image_url or not isinstance(image_url, str) or not image_url.strip():
-        return jsonify({"error": "Please provide a valid image URL."}), 400
+        return jsonify({ "error": "Invalid image URL." }), 400
     if not prompt or not isinstance(prompt, str) or not prompt.strip():
-        return jsonify({"error": "Please provide a valid prompt."}), 400
-
+        return jsonify({ "error": "Invalid prompt." }), 400
+    
     response = requests.get(image_url)
     if response.status_code != 200:
         return jsonify({"error": "Unable to fetch the image from URL."}), 400
 
-    image = Image.open(requests.get(image_url, stream=True).raw)
-    inputs = processor(text=prompt, images=image, return_tensors="pt")
-    generated_ids = model.generate(
-        input_ids=inputs["input_ids"],
-        pixel_values=inputs["pixel_values"],
-        max_new_tokens=1024,
-        do_sample=False,
-        num_beams=3
-    )
-    generated_text = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-    parsed_answer = processor.post_process_generation(generated_text, task=prompt, image_size=(image.width, image.height))
+    image = np.asarray(bytearray(response.content), dtype="uint8")
+    raw_img = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    raw_img = cv2.cvtColor(raw_img, cv2.COLOR_BGR2RGB)
 
-    response = {"response": parsed_answer}
+    depth = model.infer_image(raw_img)
+    depth = depth.squeeze().cpu().numpy()
+
+    # Convert the depth map to a suitable format for Base64 encoding
+    depth_min, depth_max = depth.min(), depth.max()
+    depth = (depth - depth_min) / (depth_max - depth_min)
+    depth_image = (depth * 255).astype(np.uint8)
+
+    pil_image = Image.fromarray(depth_image)
+    buffer = BytesIO()
+    pil_image.save(buffer, format='PNG')
+    encoded_image = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    response = {
+        "response": prompt,
+        "file_attachments": [
+            {
+                "content": encoded_image,
+                "file_name": "depth_estimation.png",
+                "media_type": "image/png"
+            }
+        ]
+    }
     return jsonify(response), 201
 
 if __name__ == "__main__":
