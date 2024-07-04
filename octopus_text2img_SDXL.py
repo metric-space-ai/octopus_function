@@ -14,6 +14,7 @@ dependencies = [
     "pip install -q nvidia-nccl-cu12==2.19.3",
     "pip install -q nvidia-nvjitlink-cu12==12.4.127",
     "pip install -q nvidia-nvtx-cu12==12.1.105",
+    "pip install -q numpy==1.26.4",
     "pip install -q torch==2.2.2",
     "pip install -q torchaudio==2.2.2",
     "pip install -q torchvision==0.17.2",
