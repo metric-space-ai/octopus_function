@@ -9,7 +9,9 @@ dependencies = [
     'pip install -q requests==2.31.0',
     'pip install -q selenium==4.20.0',
     'pip install -q selenium-wire==5.1.0',
-]
+    'pip install -q scrapingbee==2.0.1',
+    'pip install -q bs4==0.0.2'
+] 
 
 for command in dependencies:
     os.system(command)
@@ -22,9 +24,13 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 
+from scrapingbee import ScrapingBeeClient
+from bs4 import BeautifulSoup
+
 from fake_useragent import UserAgent
 
 import time
+import datetime
 
 import fitz as f
 
@@ -34,6 +40,7 @@ import threading
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 
 from flask import Flask, jsonify, request
+
 
 config_str = '''{
     "device_map": {
@@ -71,7 +78,7 @@ config_str = '''{
         }
     ]}'''
 
-def get_google_search_results(search_prompt, weight=10):
+def get_google_search_results(driver, search_prompt, weight=10):
     """
     Get the URLs of the first n Google search results for a given query using Selenium.
 
@@ -83,24 +90,10 @@ def get_google_search_results(search_prompt, weight=10):
     - list: A list containing the URLs of the first n search results.
     """
     # Set up the Chrome WebDriver
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    ua = UserAgent()
-    user_agent = ua.random
-    chrome_options.add_argument(f"user-agent={user_agent}")
-
-    options = {
-        'proxy': {'http': 'http://brd-customer-hl_0ca997a7-zone-serp:eeprm8oidobr@brd.superproxy.io:22225',
-        'https': 'http://brd-customer-hl_0ca997a7-zone-serp:eeprm8oidobr@brd.superproxy.io:22225'},
-        }
-
-    driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
-
+    
     # Navigate to Google search
     driver.get("https://www.google.com/search?q=" + search_prompt + " -site:statista.com") 
-    time.sleep(0.5)
+    time.sleep(10)
     possible_texts = ["Alle ablehnen", "Alle akzeptieren"]
     for text in possible_texts:
         try:
@@ -126,151 +119,105 @@ def get_google_search_results(search_prompt, weight=10):
     
     return urls[:weight]
 
-def scrape_url(url): 
+def scrape_url(driver, url): 
     
     text = ""
 
     # download pdf and safe the text
     if ".pdf" in url:
         try:
-            pdf_response = requests.get(url)
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            pdf_response = requests.get(url, headers=headers)
             with f.open("pdf", pdf_response.content) as doc:
                 text = chr(12).join([page.get_text() for page in doc])
         except Exception as e:
             print(e)
-            text = "Error loading the pdf"
+            try:
+                text = get_website_text(driver, url)
+                driver.quit()
+            except:
+                driver.quit()
+                text = "Error loading the pdf"
     else: 
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument(f"--proxy brd.superproxy.io:22225 --proxy-user brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        ua = UserAgent()
-        user_agent = ua.random
-        chrome_options.add_argument(f"user-agent={user_agent}")
         
-        options = {
-            'proxy': {'http': 'http://brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg@brd.superproxy.io:22225',
-            'https': 'http://brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg@brd.superproxy.io:22225'},
-            }
-
-        driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
-
         try:
-            driver.get(url)
-
-            # check for popup 
-            possible_texts = ["Accept", "decline", "Zustimmen", "Akzeptieren", "Alle Akzeptieren", "OK", "AGREE", "Allow all", "Accept All Cookies", "Deny"]
-            time.sleep(1)
-            for button_text in possible_texts:
-                try:
-                    button = WebDriverWait(driver, 0.1).until(
-                        EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, button_text))
-                        )
-                    button.click()
-
-                except:
-                    pass
-
-            time.sleep(0.5)
-
-            text = driver.find_element(By.XPATH, "/html/body").text
-            driver.quit()
+            text = get_website_text(driver, url)
         except:
             try:
                 driver.quit()
-                driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
-
-                try:
-                    driver.get(url, )
-
-                    # check for popup 
-                    possible_texts = ["Accept", "decline", "Zustimmen", "Akzeptieren", "Alle Akzeptieren", "OK", "AGREE", "Allow all", "Accept All Cookies", "Deny"]
-                    time.sleep(1)
-                    for button_text in possible_texts:
-                        try:
-                            button = WebDriverWait(driver, 0.1).until(
-                                EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, button_text))
-                                )
-                            button.click()
-
-                        except:
-                            pass
-
-                    time.sleep(0.5)
-
-                    text = driver.find_element(By.XPATH, "/html/body").text
-                    driver.quit()
-                except:
-                    try:
-                        driver.quit()
-                    except:
-                        pass
+                driver = get_driver()
+                text = get_website_text(driver, url)
             except:
-                driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
-
                 try:
-                    driver.get(url)
-
-                    # check for popup 
-                    possible_texts = ["Accept", "decline", "Zustimmen", "Akzeptieren", "Alle Akzeptieren", "OK", "AGREE", "Allow all", "Accept All Cookies", "Deny", "Consent"]
-                    time.sleep(1)
-                    for button_text in possible_texts:
-                        try:
-                            button = WebDriverWait(driver, 0.1).until(
-                                EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, button_text))
-                                )
-                            button.click()
-
-                        except:
-                            pass
-
-                    time.sleep(0.5)
-
-                    text = driver.find_element(By.XPATH, "/html/body").text
                     driver.quit()
+                    driver = get_driver()
+                    text = get_website_text(driver, url)
                 except:
                     pass
-                        
+                   
         try:
             driver.quit()
         except:
             pass
+    
     return ILLEGAL_CHARACTERS_RE.sub(r"",text)
 
-def scrape_url_with_timeout(url):
-    result = ""
-    # Set the timeout duration
-    timeout_duration = 60  # 60 seconds for demonstration
+def get_website_text(driver, url):
+    driver.get(url)
+    # check for popup 
+    possible_texts = ["Accept", "decline", "Zustimmen", "Akzeptieren", "Alle Akzeptieren", "OK", "AGREE", "Allow all", "Accept All Cookies", "Deny"]
+    time.sleep(1)
+    for button_text in possible_texts:
+        try:
+            button = WebDriverWait(driver, 0.1).until(
+                EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, button_text))
+                )
+            button.click()
+
+        except:
+            pass
+
+    time.sleep(0.5)
+
+    text = driver.find_element(By.XPATH, "/html/body").text
+    driver.quit()
+    return text
+
+def get_driver():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument(f"--proxy brd.superproxy.io:22225 --proxy-user brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    ua = UserAgent()
+    user_agent = ua.random
+    chrome_options.add_argument(f"user-agent={user_agent}")
     
-    # Flag to indicate if the function has finished executing
-    finished = threading.Event()
-    
-    # Variable to store the result of scrape_url
-    result = None
+    options = {
+        'proxy': {'http': 'http://brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg@brd.superproxy.io:22225',
+        'https': 'http://brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg@brd.superproxy.io:22225'},
+        }
+    driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
+    driver.set_page_load_timeout(120)
+    return driver
 
-    def target():
-        nonlocal result
-        # Call the scrape_url function and store its result
-        result = scrape_url(url)
-        finished.set()
+def get_driver_google_search():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    ua = UserAgent()
+    user_agent = ua.random
+    chrome_options.add_argument(f"user-agent={user_agent}")
 
-    # Create and start a thread to execute the target function
-    thread = threading.Thread(target=target)
-    thread.start()
+    options = {
+        'proxy': {'http': 'http://brd-customer-hl_0ca997a7-zone-serp:eeprm8oidobr@brd.superproxy.io:22225',
+        'https': 'http://brd-customer-hl_0ca997a7-zone-serp:eeprm8oidobr@brd.superproxy.io:22225'},
+        }
 
-    # Wait for the thread to finish or until the timeout duration expires
-    finished.wait(timeout_duration)
+    driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
+    return driver
 
-    # If the thread is still alive after the timeout duration, it means the function timed out
-    if thread.is_alive():
-        raise TimeoutError("Function execution timed out")
-
-    # If the thread has finished, join it to the main thread
-    thread.join()
-
-    # Return the result of scrape_url
-    return result
 
 app = Flask(__name__)
 
@@ -279,7 +226,32 @@ def function_google_search():
     data = request.json
     search_prompt = data.get("search_prompt", "")
 
-    result = get_google_search_results(search_prompt)
+    try:
+        driver = get_driver_google_search()
+        result = get_google_search_results(driver, search_prompt) 
+        driver.quit()
+        
+    except:
+        try:
+            time.sleep(5)
+            driver.quit()
+            driver = get_driver_google_search()
+            result = get_google_search_results(driver, search_prompt) 
+            driver.quit()
+        except:
+            try:
+                time.sleep(5)
+                driver.quit()
+                driver = get_driver_google_search()
+                result = get_google_search_results(driver, search_prompt) 
+                driver.quit()
+            except Exception as e:
+                try:
+                    driver.quit()
+                except:
+                    pass
+                print(e)
+                result = []
 
     response_text = str(result)
 
@@ -294,9 +266,33 @@ def function_scrape_url():
     data = request.json
     url = data.get("url", "")
 
-    result = scrape_url(url)
+    try:
+        driver = get_driver()
+        text = scrape_url(driver, url)
+    except:
+        try:
+            driver.quit()
+            driver = get_driver()
+            text = scrape_url(driver, url)
+        except Exception as e:
+            driver.quit()
+            text = ""
+            print(f"An error occurred: {str(e)}")
+            if not ".pdf" in url:
+                client = ScrapingBeeClient(api_key='ASMNQ1219V3ONQDE64VU1VYU0YKP1RPYKEYQ61Z28QLRE52H7ORMWDTT68BJYZOPBTKDWRFB6AFKLYYR')
+                response = client.get(url)
+                
+                text = response.text
+                soup = BeautifulSoup(text, 'html.parser')
 
-    response_text = str(result)
+                # Extract the text from the parsed HTML
+                text = soup.get_text()
+
+    try:
+        driver.quit()
+    except:
+        pass
+    response_text = str(text)
 
     response = {
         "response": response_text,
