@@ -3,8 +3,8 @@ import os
 dependencies = [
     'pip install -q beautifulsoup4==4.12.3',
     'pip install -q Flask==3.0.3',
-    'pip install -q openai==1.30.1',
-    'pip install -q requests==2.31.0',
+    'pip install -q openai==1.37.1',
+    'pip install -q requests==2.32.3',
 ]
 
 for command in dependencies:
@@ -13,7 +13,7 @@ for command in dependencies:
 import json, re, requests, textwrap, time
 from bs4 import BeautifulSoup
 from flask import Flask, jsonify, request
-from openai import OpenAI
+from openai import AzureOpenAI, OpenAI
 
 config_str = '''{
     "device_map": {
@@ -41,7 +41,7 @@ config_str = '''{
         {
             "name": "internet_research_urls",
             "display_name": "Internet research urls",
-            "description": "The Internet Research Urls performs comprehensive online research based on a user's query with given urls. Use this function only when user wants to check internet.",
+            "description": "The Internet Research Urls performs comprehensive online research based on a user's query with given urls. Use this function only when user wants to check internet. This function should be used when user wants action like {do something with} {url}. Or multiple actions like {do something1} {url1} {do something2} {url2} {do something3} {url3}",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -57,7 +57,28 @@ config = json.loads(config_str)
 
 app = Flask(__name__)
 
-client = OpenAI()
+AZURE_OPENAI_API_KEY = os.getenv('AZURE_OPENAI_API_KEY')
+AZURE_OPENAI_DEPLOYMENT_ID = os.getenv('AZURE_OPENAI_DEPLOYMENT_ID')
+AZURE_OPENAI_ENABLED = os.getenv('AZURE_OPENAI_ENABLED')
+if AZURE_OPENAI_ENABLED == "0":
+    AZURE_OPENAI_ENABLED = "False"
+elif AZURE_OPENAI_ENABLED == "1":
+    AZURE_OPENAI_ENABLED = "True"
+azure_enabled = json.loads(AZURE_OPENAI_ENABLED.lower())
+AZURE_OPENAI_URL = os.getenv('AZURE_OPENAI_URL')
+
+print("azure_enabled")
+print(azure_enabled)
+
+if azure_enabled == True:
+    client = AzureOpenAI(
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version="2024-05-01-preview",
+        azure_endpoint=AZURE_OPENAI_URL,
+        azure_deployment=AZURE_OPENAI_DEPLOYMENT_ID,
+    )
+else:
+    client = OpenAI()
 
 def ira_step1(prompt: str) -> str:
     print("ira_step1")
