@@ -77,7 +77,7 @@ config_str = '''{
         {
             "name": "function_translator",
             "display_name": "Translator",
-            "description": "Translator function",
+            "description": "The Function Translator is a powerful translation tool designed to accurately convert text from one language to another, ensuring clear communication across different languages. This function is ideal for translating entire documents, user manuals, or detailed instructions where both the source and target languages are clearly defined. It operates efficiently by detecting the source language if not specified and utilizes a sophisticated translation model to handle complex sentences, preserving context and meaning. This function is triggered when you need reliable translations for comprehensive text, such as (1) translating a technical manual from English to Japanese, (2) converting a set of user instructions from Spanish to German, or (3) translating safety guidelines from French to English for international use. However, this function should not be used in cases where (1) the text is already in the desired language, (2) only single words or short phrases without context need translation.",
             "parameters": {
                 "type": "object",
                 "properties": {
