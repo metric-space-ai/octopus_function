@@ -61,7 +61,7 @@ config_str = '''
         {
             "name": "text-to-image",
             "display_name": "Text to image",
-            "description": "Generates an image based on a positive and negative prompt",
+            "description": "The Text to Image function is a powerful tool for generating high-quality images directly from textual descriptions. Leveraging advanced stable diffusion models, it translates user-provided positive prompts into detailed visuals while refining the output by considering negative prompts to exclude unwanted elements. This function is ideal for users looking to create unique visual content, such as illustrations, concept art, or custom graphics, based on their specific ideas and preferences. Examples of when to trigger this function include: (1) Creating a visual representation of a concept described in text, (2) Generating artwork for a design project with specific elements highlighted or excluded, (3) Producing custom icons or graphics from detailed prompts. Do not trigger this function when: (1) Complex image editing tasks are required beyond basic generation, (2) Real-time image manipulation or adjustments are needed.",
             "parameters": {
                 "type": "object",
                 "properties": {

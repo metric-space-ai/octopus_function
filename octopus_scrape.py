@@ -51,7 +51,7 @@ config_str = '''{
         {
             "name": "google_search",
             "display_name": "Google search",
-            "description": "Google search function.",
+            "description": "The Google Search function is an automated tool designed to efficiently retrieve a list of relevant URLs based on a provided search prompt. By automating the search process, this function navigates through Google, handling common web interactions like cookie consent pop-ups, to deliver a curated list of links directly related to your query. It’s particularly useful when you need to quickly gather a set of online sources, making it ideal for tasks such as (1) finding the most pertinent websites on a specific topic, (2) collecting a list of potential references for further exploration, or (3) obtaining links for a broad overview of available information on a subject. However, this function should not be triggered for tasks like (1) conducting in-depth research or analysis, (2) accessing specialized databases or resources not indexed by Google, or (3) when specific content needs to be directly extracted from web pages rather than just collecting URLs.",
             "parameters": {
                 "type": "object",
                 "properties": {
