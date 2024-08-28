@@ -27,7 +27,7 @@ config_str = '''{
         {
             "name": "internet_research_agent",
             "display_name": "Internet research agent",
-            "description": "The Internet Research Agent performs comprehensive online research based on a user's query. Use this function for tasks such as gathering detailed information, comparing products, or finding the latest research on a topic. Examples: (1) Comparing features of different industrial printers; (2) Finding the latest studies on coating technologies; (3) Gathering market trends in the printing industry. Use this function only when user wants to check internet.",
+            "description": "The Internet Research Agent is a robust tool designed to conduct comprehensive online research by automatically generating and executing detailed search queries based on a user’s input. It efficiently gathers, filters, and analyzes information from various web sources, providing a structured and thorough response. This function is particularly valuable for tasks that require deep dives into specific topics, such as comparing products, identifying the latest industry research, or exploring market trends. This function is triggered when the user explicitly requests detailed internet research. Examples include: (1) comparing features of different industrial printers, (2) finding the latest studies on coating technologies, or (3) gathering market trends in the printing industry. It should not be triggered for tasks such as (1) retrieving simple facts, (2) answering general questions, or (3) handling requests that do not involve web-based information gathering.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -41,7 +41,7 @@ config_str = '''{
         {
             "name": "internet_research_urls",
             "display_name": "Internet research urls",
-            "description": "The Internet Research Urls performs comprehensive online research based on a user's query with given urls. Use this function only when user wants to check internet. This function should be used when user wants action like {do something with} {url}. Or multiple actions like {do something1} {url1} {do something2} {url2} {do something3} {url3}",
+            "description": "The Internet Research URLs function is a powerful tool that enables you to perform specific, user-defined actions on designated web pages. It allows you to input URLs along with precise tasks, such as extracting data, summarizing content, or conducting detailed analyses directly from those sites. This function is triggered when you need to perform multiple, detailed operations across different web resources, such as {extracting insights from} {url1}, {summarizing key points from} {url2}, and {analyzing market trends in} {url3}. Examples include: (1) extracting information from specific research articles on coating technologies, (2) summarizing content from multiple blog posts about industrial printing, or (3) performing an in-depth analysis of market data from provided links. This function should not be triggered when (1) broad internet research is required without specific URLs, (2) the task involves simple fact-checking or general information retrieval.",
             "parameters": {
                 "type": "object",
                 "properties": {
