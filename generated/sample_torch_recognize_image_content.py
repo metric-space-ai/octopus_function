@@ -41,7 +41,7 @@ config_str = '''{
         {
             "name": "recognize_image_content",
             "display_name": "Recognize Image Content",
-            "description": "Recognize the content of the images provided by a URL and give user answers about the content.",
+            "description": "The Image Content Recognizer is a powerful tool designed to analyze and interpret the content of images provided via a URL. It answers user-specific questions about the image by utilizing advanced machine learning models to extract and understand visual information. This function is ideal for scenarios where visual content needs to be examined and contextual information must be derived. Examples include: (1) identifying objects, scenes, or text within an image, (2) analyzing a product image to extract details, or (3) interpreting complex diagrams or charts. The function should not be used for tasks such as (1) retrieving non-visual data, (2) processing text without an image, or (3) answering questions unrelated to the visual content of the provided image.",
             "parameters": {
                 "type": "object",
                 "properties": {
