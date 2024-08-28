@@ -3,7 +3,7 @@ import os
 dependencies = [
     'pip install -q beautifulsoup4==4.12.3',
     'pip install -q Flask==3.0.3',
-    'pip install -q openai==1.37.1',
+    'pip install -q openai==1.42.0',
     'pip install -q requests==2.32.3',
 ]
 
