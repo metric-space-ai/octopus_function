@@ -57,7 +57,7 @@ config_str = """
     "functions": [{
         "name": "Anonymization",
         "display_name": "Anonymization",
-        "description": "Extract entities and Anonymize",
+        "description": "The function Anonymization is designed to extract and anonymize sensitive entities from a provided text. This function is highly effective for protecting personal or sensitive information by replacing identifiable data with anonymized alternatives, ensuring privacy and confidentiality. It should be triggered when there’s a need to anonymize specific data such as names, addresses, or other personal identifiers within various texts, including legal documents, research papers, and customer feedback. Examples of when to use this function include: (1) anonymizing personal details in legal contracts, (2) removing sensitive information from research data before publication, and (3) anonymizing customer feedback to prevent data breaches. This function should not be triggered for scenarios where anonymization is not required, such as tasks that involve (1) generic text processing, (2) general information extraction, or (3) summarizing non-sensitive content for general insights.",
         "parameters": {
             "type": "object",
             "properties": {
