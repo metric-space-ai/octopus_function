@@ -51,7 +51,7 @@ config_str = '''{
         {
             "name": "google_search",
             "display_name": "Google search",
-            "description": "The Google Search function is an automated tool designed to efficiently retrieve a list of relevant URLs based on a provided search prompt. By automating the search process, this function navigates through Google, handling common web interactions like cookie consent pop-ups, to deliver a curated list of links directly related to your query. It’s particularly useful when you need to quickly gather a set of online sources, making it ideal for tasks such as (1) finding the most pertinent websites on a specific topic, (2) collecting a list of potential references for further exploration, or (3) obtaining links for a broad overview of available information on a subject. However, this function should not be triggered for tasks like (1) conducting in-depth research or analysis, (2) accessing specialized databases or resources not indexed by Google, or (3) when specific content needs to be directly extracted from web pages rather than just collecting URLs.",
+            "description": "The Google Search function is an automated tool designed to efficiently retrieve a list of relevant URLs based on a provided search prompt. By automating the search process, this function navigates through Google, handling common web interactions like cookie consent pop-ups, to deliver a curated list of links directly related to your query. It's particularly useful when you need to quickly gather a set of online sources, making it ideal for tasks such as (1) finding the most pertinent websites on a specific topic, (2) collecting a list of potential references for further exploration, or (3) obtaining links for a broad overview of available information on a subject. However, this function should not be triggered for tasks like (1) conducting in-depth research or analysis, (2) accessing specialized databases or resources not indexed by Google, or (3) when specific content needs to be directly extracted from web pages rather than just collecting URLs.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -77,6 +77,14 @@ config_str = '''{
             "return_type": "application/json"
         }
     ]}'''
+
+SUPERPROXY_ISP_USER = os.getenv("SUPERPROXY_ISP_USER")
+SUPERPROXY_ISP_PASSWORD = os.getenv("SUPERPROXY_ISP_PASSWORD")
+SUPERPROXY_SERP_USER = os.getenv("SUPERPROXY_SERP_USER")
+SUPERPROXY_SERP_PASSWORD = os.getenv("SUPERPROXY_SERP_PASSWORD")
+SUPERPROXY_ISP_USER = os.getenv("SUPERPROXY_ISP_USER")
+SUPERPROXY_ZONE_USER = os.getenv("SUPERPROXY_ZONE_USER")
+SUPERPROXY_ZONE_PASSWORD = os.getenv("SUPERPROXY_ZONE_PASSWORD")
 
 def get_google_search_results(driver, search_prompt, weight=10):
     """
@@ -187,21 +195,22 @@ def get_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument(f"--proxy brd.superproxy.io:22225 --proxy-user brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg")
+    chrome_options.add_argument(f"--proxy brd.superproxy.io:22225 --proxy-user {SUPERPROXY_ISP_USER}:{SUPERPROXY_ISP_PASSWORD}")
     chrome_options.add_argument("--disable-dev-shm-usage")
     ua = UserAgent()
     user_agent = ua.random
     chrome_options.add_argument(f"user-agent={user_agent}")
     
     options = {
-        'proxy': {'http': 'http://brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg@brd.superproxy.io:22225',
-        'https': 'http://brd-customer-hl_0ca997a7-zone-isp:4at60zxmefcg@brd.superproxy.io:22225'},
+        'proxy': {'http': f'http://{SUPERPROXY_ISP_USER}:{SUPERPROXY_ISP_PASSWORD}@brd.superproxy.io:22225',
+        'https': f'http://{SUPERPROXY_ISP_USER}:{SUPERPROXY_ISP_PASSWORD}@brd.superproxy.io:22225'},
         }
     driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
     driver.set_page_load_timeout(120)
     return driver
 
 def get_driver_google_search():
+    # Set up the Chrome WebDriver
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
@@ -211,8 +220,8 @@ def get_driver_google_search():
     chrome_options.add_argument(f"user-agent={user_agent}")
 
     options = {
-        'proxy': {'http': 'http://brd-customer-hl_0ca997a7-zone-serp:eeprm8oidobr@brd.superproxy.io:22225',
-        'https': 'http://brd-customer-hl_0ca997a7-zone-serp:eeprm8oidobr@brd.superproxy.io:22225'},
+        'proxy': {'http': f'http://{SUPERPROXY_SERP_USER}:{SUPERPROXY_SERP_PASSWORD}@brd.superproxy.io:22225',
+        'https': f'http://{SUPERPROXY_SERP_USER}:{SUPERPROXY_SERP_PASSWORD}@brd.superproxy.io:22225'},
         }
 
     driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
