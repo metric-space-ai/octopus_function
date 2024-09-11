@@ -86,6 +86,8 @@ SUPERPROXY_ISP_USER = os.getenv("SUPERPROXY_ISP_USER")
 SUPERPROXY_ZONE_USER = os.getenv("SUPERPROXY_ZONE_USER")
 SUPERPROXY_ZONE_PASSWORD = os.getenv("SUPERPROXY_ZONE_PASSWORD")
 
+SCRAPINGBEE_API_KEY = os.getenv("SCRAPINGBEE_API_KEY")
+
 def get_google_search_results(driver, search_prompt, weight=10):
     """
     Get the URLs of the first n Google search results for a given query using Selenium.
@@ -101,7 +103,7 @@ def get_google_search_results(driver, search_prompt, weight=10):
     
     # Navigate to Google search
     driver.get("https://www.google.com/search?q=" + search_prompt + " -site:statista.com") 
-    time.sleep(10)
+    time.sleep(7)
     possible_texts = ["Alle ablehnen", "Alle akzeptieren"]
     for text in possible_texts:
         try:
@@ -114,13 +116,16 @@ def get_google_search_results(driver, search_prompt, weight=10):
 
     # Extract URLs from the search results
     urls = []
-
-    search_section = driver.find_element(By.ID, 'search')
-    names = search_section.find_elements(By.CSS_SELECTOR, "h3")
-    for name in names:
-        url = name.find_element(By.XPATH, '..').get_attribute("href")
-        if not url == None:
-            urls.append(url)
+    time.sleep(3)
+    try:
+        search_section = driver.find_element(By.ID, 'search')
+        names = search_section.find_elements(By.CSS_SELECTOR, "h3")
+        for name in names:
+            url = name.find_element(By.XPATH, '..').get_attribute("href")
+            if not url == None:
+                urls.append(url)
+    except Exception as e:
+        print(f"Error while getting the google links: {e}")
             
     driver.quit()
     
@@ -128,9 +133,7 @@ def get_google_search_results(driver, search_prompt, weight=10):
     return urls[:weight]
 
 def scrape_url(driver, url): 
-    
     text = ""
-
     # download pdf and safe the text
     if ".pdf" in url:
         try:
@@ -174,7 +177,7 @@ def get_website_text(driver, url):
     driver.get(url)
     # check for popup 
     possible_texts = ["Accept", "decline", "Zustimmen", "Akzeptieren", "Alle Akzeptieren", "OK", "AGREE", "Allow all", "Accept All Cookies", "Deny"]
-    time.sleep(1)
+    time.sleep(3)
     for button_text in possible_texts:
         try:
             button = WebDriverWait(driver, 0.1).until(
@@ -185,10 +188,16 @@ def get_website_text(driver, url):
         except:
             pass
 
-    time.sleep(0.5)
-
-    text = driver.find_element(By.XPATH, "/html/body").text
-    driver.quit()
+    time.sleep(2)
+    try:
+        text = driver.find_element(By.XPATH, "/html/body").text
+    except Exception as e:
+        print(f"Error extracting website text: {e}")
+        text = ""
+    try:
+        driver.quit()
+    except:
+        pass
     return text
 
 def get_driver():
@@ -197,6 +206,7 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument(f"--proxy brd.superproxy.io:22225 --proxy-user {SUPERPROXY_ISP_USER}:{SUPERPROXY_ISP_PASSWORD}")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false")
     ua = UserAgent()
     user_agent = ua.random
     chrome_options.add_argument(f"user-agent={user_agent}")
@@ -215,6 +225,7 @@ def get_driver_google_search():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--blink-settings=imagesEnabled=false") 
     ua = UserAgent()
     user_agent = ua.random
     chrome_options.add_argument(f"user-agent={user_agent}")
@@ -225,6 +236,8 @@ def get_driver_google_search():
         }
 
     driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=options)
+    driver.set_page_load_timeout(30)
+    
     return driver
 
 
@@ -242,25 +255,20 @@ def function_google_search():
         
     except:
         try:
-            time.sleep(5)
             driver.quit()
+        except:
+            pass
+        try:
             driver = get_driver_google_search()
             result = get_google_search_results(driver, search_prompt) 
             driver.quit()
-        except:
+        except Exception as e:
             try:
-                time.sleep(5)
                 driver.quit()
-                driver = get_driver_google_search()
-                result = get_google_search_results(driver, search_prompt) 
-                driver.quit()
-            except Exception as e:
-                try:
-                    driver.quit()
-                except:
-                    pass
-                print(e)
-                result = []
+            except:
+                pass
+            print(e)
+            result = []
 
     response_text = str(result)
 
@@ -288,7 +296,7 @@ def function_scrape_url():
             text = ""
             print(f"An error occurred: {str(e)}")
             if not ".pdf" in url:
-                client = ScrapingBeeClient(api_key='ASMNQ1219V3ONQDE64VU1VYU0YKP1RPYKEYQ61Z28QLRE52H7ORMWDTT68BJYZOPBTKDWRFB6AFKLYYR')
+                client = ScrapingBeeClient(SCRAPINGBEE_API_KEY)
                 response = client.get(url)
                 
                 text = response.text
