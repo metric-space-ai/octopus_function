@@ -132,7 +132,8 @@ def ira_step2scrape(prompt: str) -> []:
         query = query.replace(" ", "+")
         url = str("http://localhost:8080/api/v1/scraper-search-service?prompt=" + query)
 
-        while True:
+        max_tries = 2
+        for i in range(max_tries):
             try:
                 print("request")
                 print("url")
@@ -149,9 +150,13 @@ def ira_step2scrape(prompt: str) -> []:
                         if link_json not in links:
                             links.append(link_json)
                     break
-            except:
+            except Exception as e:
+                print(f"Error while gettting googlesearchresults:\n{e}")
                 print("sleeping")
                 time.sleep(5)
+            if i==max_tries-1:
+                print(f"Warning: Googlesearch found no websites for prompt:\n{query}")
+
 
     print("links")
     print(links)
