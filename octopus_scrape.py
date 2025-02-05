@@ -86,8 +86,6 @@ SUPERPROXY_ISP_USER = os.getenv("SUPERPROXY_ISP_USER")
 SUPERPROXY_ZONE_USER = os.getenv("SUPERPROXY_ZONE_USER")
 SUPERPROXY_ZONE_PASSWORD = os.getenv("SUPERPROXY_ZONE_PASSWORD")
 
-SCRAPINGBEE_API_KEY = os.getenv("SCRAPINGBEE_API_KEY")
-
 def get_google_search_results(driver, search_prompt, weight=10):
     """
     Get the URLs of the first n Google search results for a given query using Selenium.
@@ -295,15 +293,6 @@ def function_scrape_url():
             driver.quit()
             text = ""
             print(f"An error occurred: {str(e)}")
-            if not ".pdf" in url:
-                client = ScrapingBeeClient(SCRAPINGBEE_API_KEY)
-                response = client.get(url)
-                
-                text = response.text
-                soup = BeautifulSoup(text, 'html.parser')
-
-                # Extract the text from the parsed HTML
-                text = soup.get_text()
 
     try:
         driver.quit()
