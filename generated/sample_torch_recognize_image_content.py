@@ -1,14 +1,14 @@
 import os
 
 dependencies = [
-    "pip install -q flash-attn==2.6.3",
-    "pip install -q Flask==3.0.3",
-    "pip install -q torch==2.4.0",
-    "pip install -q torchvision==0.19.0",
-    "pip install -q accelerate==0.33.0",
-    "pip install -q transformers==4.44.2",
+    "pip install -q flash-attn==2.7.3",
+    "pip install -q Flask==3.1.0",
+    "pip install -q torch==2.6.0",
+    "pip install -q torchvision==0.21.0",
+    "pip install -q accelerate==1.3.0",
+    "pip install -q transformers==4.48.2",
     "apt-get update --fix-missing && apt-get install -y --no-install-recommends cmake ghostscript git libegl-dev libffi-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev libimagequant-dev libjpeg-turbo-progs libjpeg8-dev liblcms2-dev libopengl-dev libopenjp2-7-dev libssl-dev libtiff5-dev libwebp-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxkbcommon-x11-0 meson netpbm python3-dev python3-numpy python3-setuptools python3-tk sudo tcl8.6-dev tk8.6-dev virtualenv wget xvfb zlib1g-dev # required by Pillow",
-    "pip install -q Pillow==10.4.0",
+    "pip install -q Pillow==11.1.0",
     "pip install -q requests==2.32.3"
 ]
 
@@ -41,7 +41,7 @@ config_str = '''{
         {
             "name": "recognize_image_content",
             "display_name": "Recognize Image Content",
-            "description": "The Image Content Recognizer is a powerful tool designed to analyze and interpret the content of images provided via a URL. It answers user-specific questions about the image by utilizing advanced machine learning models to extract and understand visual information. This function is ideal for scenarios where visual content needs to be examined and contextual information must be derived. Examples include: (1) identifying objects, scenes, or text within an image, (2) analyzing a product image to extract details, or (3) interpreting complex diagrams or charts. The function should not be used for tasks such as (1) retrieving non-visual data, (2) processing text without an image, or (3) answering questions unrelated to the visual content of the provided image.",
+            "description": "Recognize the content of the images provided by a URL and give user answers about the content.",
             "parameters": {
                 "type": "object",
                 "properties": {
