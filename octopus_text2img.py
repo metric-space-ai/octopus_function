@@ -58,16 +58,18 @@ config = json.loads(config_str)
 app = Flask(__name__)
 
 def setup_environment():
-    print("Changing directory to content")
-    os.chdir("content")
+    if not os.path.isdir("/tmp/content"):
+        os.mkdir("/tmp/content")
+    print("Changing directory to /tmp/content")
+    os.chdir("/tmp/content")
     print("Cloning TotoroUI repository...")
-    os.system("git clone -b totoro3 https://github.com/camenduru/ComfyUI content/TotoroUI")
-    os.chdir("content/TotoroUI")
+    os.system("git clone -b totoro3 https://github.com/camenduru/ComfyUI /tmp/content/TotoroUI")
+    os.chdir("/tmp/content/TotoroUI")
     print("Downloading model files...")
-    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/flux1-dev-fp8.safetensors -d content/TotoroUI/models/unet -o flux1-dev-fp8.safetensors")
-    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/ae.sft -d content/TotoroUI/models/vae -o ae.sft")
-    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/clip_l.safetensors -d content/TotoroUI/models/clip -o clip_l.safetensors")
-    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp8_e4m3fn.safetensors -d content/TotoroUI/models/clip -o t5xxl_fp8_e4m3fn.safetensors")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/flux1-dev-fp8.safetensors -d /tmp/content/TotoroUI/models/unet -o flux1-dev-fp8.safetensors")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/ae.sft -d /tmp/content/TotoroUI/models/vae -o ae.sft")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/clip_l.safetensors -d /tmp/content/TotoroUI/models/clip -o clip_l.safetensors")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp8_e4m3fn.safetensors -d /tmp/content/TotoroUI/models/clip -o t5xxl_fp8_e4m3fn.safetensors")
     print("Environment setup completed.")
 
     import nodes
