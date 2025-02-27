@@ -18,13 +18,9 @@ for command in dependencies:
 import gc
 import io
 import json
-import nodes
 import numpy as np
 import random
 import torch
-from nodes import NODE_CLASS_MAPPINGS
-from totoro_extras import nodes_custom_sampler
-from totoro import model_management
 from flask import Flask, jsonify, request, send_file
 from PIL import Image
 
@@ -73,6 +69,11 @@ def setup_environment():
     os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/clip_l.safetensors -d /content/TotoroUI/models/clip -o clip_l.safetensors")
     os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp8_e4m3fn.safetensors -d /content/TotoroUI/models/clip -o t5xxl_fp8_e4m3fn.safetensors")
     print("Environment setup completed.")
+
+    import nodes
+    from nodes import NODE_CLASS_MAPPINGS
+    from totoro_extras import nodes_custom_sampler
+    from totoro import model_management
 
 BasicGuider=None
 BasicScheduler=None
