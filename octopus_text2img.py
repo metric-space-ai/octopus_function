@@ -1,23 +1,30 @@
-
 import os
 
 dependencies = [
+    'apt-get update --fix-missing && apt-get install -y --no-install-recommends aria2 cmake ghostscript git libegl-dev libffi-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev libimagequant-dev libjpeg-turbo-progs libjpeg8-dev liblcms2-dev libopengl-dev libopenjp2-7-dev libssl-dev libtiff5-dev libwebp-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxkbcommon-x11-0 meson netpbm python3-dev python3-numpy python3-setuptools python3-tk sudo tcl8.6-dev tk8.6-dev virtualenv wget xvfb zlib1g-dev # required by Pillow',
+    "pip install -q accelerate==1.4.0",
+    "pip install -q diffusers==0.32.2",
+    "pip install -q einops==0.8.1",
     "pip install -q Flask==3.1.0",
+    'pip install -q Pillow==11.1.0',
     "pip install -q torch==2.6.0",
-    "pip install -q diffusers==0.16.1",
-    "pip install -q accelerate==0.22.0",
-    "pip install -q einops==0.8.0",
-    "apt-get install -y aria2"
+    "pip install -q torchsde==0.2.6",
+    "pip install -q xformers==0.0.29"
 ]
 
 for command in dependencies:
     os.system(command)
 
+import gc
+import io
 import json
+import nodes
+import numpy as np
 import random
 import torch
-import io
-import numpy as np
+from nodes import NODE_CLASS_MAPPINGS
+from totoro_extras import nodes_custom_sampler
+from totoro import model_management
 from flask import Flask, jsonify, request, send_file
 from PIL import Image
 
@@ -54,10 +61,22 @@ config_str = '''{
 config = json.loads(config_str)
 app = Flask(__name__)
 
-# Model loading would occur in setup.
+def setup_environment():
+    print("Changing directory to content")
+    os.chdir("content")
+    print("Cloning TotoroUI repository...")
+    os.system("git clone -b totoro3 https://github.com/camenduru/ComfyUI content/TotoroUI")
+    os.chdir("content/TotoroUI")
+    print("Downloading model files...")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/flux1-dev-fp8.safetensors -d /content/TotoroUI/models/unet -o flux1-dev-fp8.safetensors")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/ae.sft -d /content/TotoroUI/models/vae -o ae.sft")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/clip_l.safetensors -d /content/TotoroUI/models/clip -o clip_l.safetensors")
+    os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp8_e4m3fn.safetensors -d /content/TotoroUI/models/clip -o t5xxl_fp8_e4m3fn.safetensors")
+    print("Environment setup completed.")
 
 @app.route('/v1/setup', methods=["POST"])
 def setup():
+    setup_environment()
     response = {"setup": "Performed"}
     return jsonify(response), 201
 
