@@ -58,7 +58,10 @@ config = json.loads(config_str)
 app = Flask(__name__)
 
 def setup_environment():
-    if not os.path.isdir("/tmp/content"):
+    if os.path.isdir("/tmp/content"):
+        os.rmdir("/tmp/content")
+        os.mkdir("/tmp/content")
+    else:
         os.mkdir("/tmp/content")
     print("Changing directory to /tmp/content")
     os.chdir("/tmp/content")
