@@ -21,6 +21,7 @@ import json
 import numpy as np
 import random
 import shutil
+import sys
 import torch
 from flask import Flask, jsonify, request, send_file
 from PIL import Image
