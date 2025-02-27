@@ -8,6 +8,7 @@ dependencies = [
     "pip install -q Flask==3.1.0",
     'pip install -q Pillow==11.1.0',
     "pip install -q torch==2.6.0",
+    "pip install -q torchvision==0.21.0",
     "pip install -q torchsde==0.2.6",
     "pip install -q xformers==0.0.29"
 ]
