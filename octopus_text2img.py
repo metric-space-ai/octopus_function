@@ -76,6 +76,7 @@ def setup_environment():
     os.system("aria2c --console-log-level=error -c -x 16 -s 16 -k 1M https://huggingface.co/camenduru/FLUX.1-dev/resolve/main/t5xxl_fp8_e4m3fn.safetensors -d /tmp/content/TotoroUI/models/clip -o t5xxl_fp8_e4m3fn.safetensors")
     print("Environment setup completed.")
 
+    sys.path.append('/tmp/content/TotoroUI')
     import nodes
     from nodes import NODE_CLASS_MAPPINGS
     from totoro_extras import nodes_custom_sampler
