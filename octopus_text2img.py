@@ -181,7 +181,18 @@ def generate_image():
         pil_img.save(buffered, format="PNG")
         buffered.seek(0)
 
-    return send_file(buffered, mimetype='image/png')
+    encoded_content = base64.b64encode(pil_img.read()).decode('utf-8')
+
+    response = {
+        "file_attachments": [
+            {
+                "content": encoded_content,
+                "file_name": "image.png",
+                "media_type": "image/png"
+            }
+        ]
+    }
+    return jsonify(response), 201
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, threaded=True)
