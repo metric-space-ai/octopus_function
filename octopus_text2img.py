@@ -20,6 +20,7 @@ import io
 import json
 import numpy as np
 import random
+import shutil
 import torch
 from flask import Flask, jsonify, request, send_file
 from PIL import Image
@@ -59,7 +60,7 @@ app = Flask(__name__)
 
 def setup_environment():
     if os.path.isdir("/tmp/content"):
-        os.rmdir("/tmp/content")
+        shutil.rmtree("/tmp/content")
         os.mkdir("/tmp/content")
     else:
         os.mkdir("/tmp/content")
