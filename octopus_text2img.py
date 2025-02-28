@@ -204,7 +204,7 @@ def generate_image():
         pil_img.save(buffered, format="PNG")
         buffered.seek(0)
 
-    encoded_content = base64.b64encode(buffered).decode('utf-8')
+    encoded_content = base64.b64encode(buffered.read()).decode('utf-8')
 
     response = {
         "file_attachments": [
