@@ -17,6 +17,7 @@ dependencies = [
 for command in dependencies:
     os.system(command)
 
+import base64
 import gc
 import io
 import json
