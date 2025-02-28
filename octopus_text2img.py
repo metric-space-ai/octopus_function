@@ -149,6 +149,9 @@ def setup():
 
 @app.route('/v1/generate_image', methods=['POST'])
 def generate_image():
+    sys.path.append('/tmp/content/TotoroUI')
+    from totoro import model_management
+
     data = request.get_json()
     positive_prompt = data.get("positive_prompt", "cyperpunk octopus spelling out the words FLUX DEV, cinematic, dynamic shot")
     width = int(data.get("width", 512))
