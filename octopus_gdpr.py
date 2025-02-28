@@ -138,7 +138,7 @@ class ModelManager:
 
         try:
             tokenizer = AutoTokenizer.from_pretrained(model_key)
-            model = AutoModelForCausalLM.from_pretrained(model_key, torch_dtype=torch.float16 if self.device == "cuda" else torch.float32).to(self.device)
+            model = AutoModelForCausalLM.from_pretrained(model_key, torch_dtype=torch.float16).to(self.device)
 
             tokenizer.pad_token = "<|im_start|>"
             tokenizer.eos_token = "<|im_end|>"
