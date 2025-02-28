@@ -10,6 +10,7 @@ dependencies = [
     "pip install -q torch==2.5.1",
     "pip install -q torchvision==0.20.1",
     "pip install -q torchsde==0.2.6",
+    "pip install -q transformers==4.48.2",
     "pip install -q xformers==0.0.29"
 ]
 
