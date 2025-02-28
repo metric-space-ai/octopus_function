@@ -73,6 +73,17 @@ vae=None
 VAEDecode=None
 
 def setup_model():
+    global BasicGuider
+    global BasicScheduler
+    global clip
+    global EmptyLatentImage
+    global KSamplerSelect
+    global RandomNoise
+    global SamplerCustomAdvanced
+    global unet
+    global vae
+    global VAEDecode
+
     if os.path.isdir("/tmp/content"):
         shutil.rmtree("/tmp/content")
         os.mkdir("/tmp/content")
