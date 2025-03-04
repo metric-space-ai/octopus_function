@@ -37,7 +37,7 @@ config_str = '''{
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "url": { "type": "number", "description": "The url of JSON file" }
+                    "url": { "type": "string", "description": "The URL of JSON file" }
                 },
                 "required": ["url"]
             },
@@ -108,9 +108,6 @@ def convert_markdown_to_pdf(markdown_text, output_pdf):
 def md2pdf():
     data = request.json
     json_url = data.get("url")
-
-    if not json_url or not isinstance(json_url, str):
-        return jsonify({"error": "Invalid URL."}), 400
 
     try:
         response = requests.get(json_url)
