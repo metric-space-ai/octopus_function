@@ -53,14 +53,18 @@ config = """{
     },
     "functions": [
         {
-            "name": "knowledge_gathering",
-            "description": "The “Knowledge Gathering” function is a specialized tool used when existing data can’t answer a complex query. It is triggered when a user specifically requests detailed knowledge or confirms they want to proceed with in-depth research. For example: User: ‘Writes some question or task.’ Assistant: ‘The task/question that you provided seems complex. There is no fitting expert agent in the database. Do you want to generate a new expert agent?’ User: ‘Yes.’ The function first asks for confirmation, as the process may take time. Once confirmed, it gathers information from multiple sources, compiles it into a structured resource, like a book, and saves it for future use. Examples of when to trigger this function include (1) compiling data on new technologies, (2) when no expert agent or knowledge exists for a technical inquiry, or (3) gathering detailed info about technical processes. It should not be triggered if (1) the information is already available, (2) the user hasn’t confirmed, or (3) the query is simple.",
+            "name": "textbook_generator",
+            "description": "'Textbook generator' function is a tool used when existing data can't answer a complex query. It is triggered when a user specifically requests detailed knowledge or confirms they want to proceed with in-depth research. For example: User: 'Writes some question or task.' Assistant: 'The task/question that you provided seems complex. There is no fitting expert agent in the database. Do you want to generate a new expert agent?' User: 'Yes.' The function first asks for confirmation, as the process may take time. Once confirmed, it gathers information from multiple sources, compiles it into a structured resource, like a book, and saves it for future use. Examples of when to trigger this function include (1) compiling data on new technologies, (2) when no expert agent or knowledge exists for a technical inquiry, or (3) gathering detailed info about technical processes. It should not be triggered if (1) the information is already available, (2) the user hasn't confirmed, or (3) the query is simple.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "task": {
                         "type": "string",
                         "description": "The user's input message along with additional context from the chat history that covers the entire context of the question."
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "The language of the book to generate. normally the language of the user input when not specified explicitly"
                     },
                     "urls": {
                         "type": "array",
@@ -91,23 +95,35 @@ OCTOPUS_SCRAPE_ENDPOINT = f"{OCTOPUS_API_BASE}/api/v1/scraper-service"
 headers = {"X-Auth-Token": OCTOPUS_TOKEN}
 
 
-def gpt_inference(content: str) -> str:
+def gpt_inference(content: str, language, model="gpt-4o-mini-2024-07-18") -> str:
     print("function gpt_inference")
 
     if len(content) > max_context_window_chars:
         content = textwrap.shorten(content, width=max_context_window_chars)
 
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": content,
-            }
-        ],
-        model="gpt-4o-2024-08-06",
-    )
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"You are an AI assistant that always responds in {language}.",
+                },
+                {"role": "user", "content": content},
+            ],
+            model=model,
+        )
+    except Exception as e:
+        print(f"Error during API call: {e}")
+        return None
 
-    summary = chat_completion.choices[0].message.content
+    if not chat_completion or not chat_completion.choices:
+        print("Error: No valid response received from OpenAI API.")
+        return None
+
+    summary = chat_completion.choices[0].message.content.strip()
+    if not summary:
+        print("Error: Empty response from OpenAI API.")
+        return None
 
     return summary
 
@@ -129,7 +145,7 @@ def load_markdowns():
 markdowns_list = load_markdowns()
 
 
-def solve_task(task: str, textbook: str = None) -> str:
+def solve_task(task: str, language, textbook: str = None) -> str:
     print("function solve_task")
     # check if there alreaedy is an expert for that task
     print(task)
@@ -146,7 +162,7 @@ Here is the Textbook:
 Now answer the following Task:
 {task}
 """
-        response = gpt_inference(content)
+        response = gpt_inference(content, language)
     # ask to generate new expert
     return response
 
@@ -210,7 +226,7 @@ def clean_pdf_content(content):
     return cleaned_content
 
 
-def process_user_files(files_list):
+def process_user_files(files_list, language):
     print("function process_user_files")
     """
     Processes user files by summarizing content and extracting topics.
@@ -234,13 +250,16 @@ def process_user_files(files_list):
                 Text:
                 {f["content"]}
                 """
-                summary_response = gpt_inference(prompt_for_summary)
+                summary_response = gpt_inference(prompt_for_summary, language)
                 f["summary"] = extract_summary(summary_response)
                 f["topics"] = extract_topics(summary_response)
 
             processed.append(f)
-        except:
-            print(f"Skipping file {f['filename']} because of error.")
+        except Exception as e:
+            print(f"Skipping file {f['filename']} because of error: {e}")
+            import traceback
+
+            print(traceback.format_exc())
 
     return processed
 
@@ -279,8 +298,7 @@ def extract_title_if_exists(task: str) -> str:
     return ""
 
 
-# 3️⃣ Now create a book title using the topics and task_prompt
-def create_topic(all_topics, task):
+def create_topic(all_topics, language, task):
     print("function create_topic")
     topics_prompt = f"""
     You are a title generator for textbooks. Your job is to create a **clear, structured, and engaging book title** 
@@ -300,7 +318,21 @@ def create_topic(all_topics, task):
     if len(topics_prompt) > max_context_window_chars:
         topics_prompt = textwrap.shorten(topics_prompt, width=max_context_window_chars)
 
-    completion = create_completion([{"role": "user", "content": topics_prompt}])
+    # Reset the global system prompt so that a new language is detected for this call
+    system_prompt = f"You are an AI assistant that always responds in {language}."
+
+    if len(system_prompt) > max_context_window_chars:
+        system_prompt = textwrap.shorten(system_prompt, width=max_context_window_chars)
+
+    completion = create_completion(
+        [
+            {
+                "role": "system",
+                "content": system_prompt,
+            },  # Use the newly defined system prompt
+            {"role": "user", "content": topics_prompt},
+        ]
+    )
 
     topic = (
         extract_response(completion)
@@ -310,7 +342,6 @@ def create_topic(all_topics, task):
     )
 
     print(f"📘 Generated Book Title: {topic}")
-
     return topic
 
 
@@ -325,7 +356,7 @@ def remove_duplicates(input_list):
     return result
 
 
-def select_best_file_for_subchapter(files_list, subchapter):
+def select_best_file_for_subchapter(files_list, language, subchapter):
     print("function select_best_file_for_subchapter")
     """
     Selects the most relevant file from uploaded documents for a given subchapter.
@@ -343,7 +374,7 @@ def select_best_file_for_subchapter(files_list, subchapter):
     for i, f in enumerate(files_list, start=1):
         prompt += f"\nDocument {i} Summary:\n{f['summary']}"
 
-    answer = gpt_inference(prompt).strip()
+    answer = gpt_inference(prompt, language).strip()
 
     if answer == "None":
         return None  # No relevant file found
@@ -356,20 +387,41 @@ def select_best_file_for_subchapter(files_list, subchapter):
 
 def extract_response(comp):
     print("function extract_response")
+    if comp is None:
+        print("Error: Received None instead of a valid completion response.")
+        return ""
     try:
         return comp.choices[0].message.content
-    except (KeyError, IndexError, TypeError) as e:
+    except (KeyError, IndexError, TypeError, AttributeError) as e:
         print(f"Error extracting response: {e}")
         return ""
 
 
 def create_completion(messages, model="gpt-4o-mini-2024-07-18"):
     print("function create_completion")
-    completion = client.chat.completions.create(
-        model=model,
-        messages=messages,
-    )
-    return completion
+    try:
+        completion = client.chat.completions.create(
+            model=model,
+            messages=messages,
+        )
+        # Debug: print the complete response using proper formatting
+        print("Full API response: %s" % completion)
+
+        # Updated check for choices attribute
+        if (
+            not completion
+            or not getattr(completion, "choices", None)
+            or not completion.choices
+        ):
+            print("Error: Invalid API response (missing choices).")
+            return None
+        return completion
+    except Exception as e:
+        print(f"Error in create_completion: {e}")
+        import traceback
+
+        print(traceback.format_exc())
+        return None
 
 
 def enhance_with_internet_data(query):
@@ -469,7 +521,7 @@ def fetch_desired_files(urls):
         return []
 
 
-def generate_textbook(task, urls):
+def generate_textbook(task, language, urls):
     print("function generate_textbook")
     """
     Generates a textbook based on files fetched from the Octopus server.
@@ -489,7 +541,7 @@ def generate_textbook(task, urls):
     print(f"📂 Fetched {len(user_files)} specific files from the server.")
 
     # Process the retrieved files
-    processed_user_files = process_user_files(user_files)
+    processed_user_files = process_user_files(user_files, language)
 
     # -- STEP 2: If fewer than 2 files, fallback to internet data --
     if len(processed_user_files) < 2:
@@ -506,7 +558,7 @@ def generate_textbook(task, urls):
             )
 
         # Process scraped files
-        processed_scraped_files = process_user_files(scraped_files)
+        processed_scraped_files = process_user_files(scraped_files, language)
 
         # Merge sets
         processed_files = processed_user_files + processed_scraped_files
@@ -527,16 +579,21 @@ def generate_textbook(task, urls):
     if user_provided_title:
         topic = user_provided_title  # If the user gave a title, use it
     else:
-        topic = create_topic(all_topics, task)  # Generate a title from topics
+        topic = create_topic(all_topics, language, task)  # Generate a title from topics
 
     print(f"📖 FINAL BOOK TITLE: {topic}")
 
     outline_prompt = f"""
-    I have a list of topics from docuemnts and I want you to write an outline of a book called: "{topic}". The outline should be written from the given topics and have 8 chapters that progresses logically, with later items building on earlier ones. Organize the chapters and subchapters in 1.1, 1.2 and 1.1.1 and 1.1.2 and so on. 
-    
-    Now use these topics to generate the 8 chapter outline, no explanation, nothing else:
+    I have a list of <topics> from documents, a <book idea> and a <title>. I want you to write an outline of a book with the <title>: "{topic}", based on the <book idea>. I want you to write the outline fitting to the <book idea> and choose fitting specific topics from the <topics> list. The outline should have 8 chapters that progresses logically, with later items building on earlier ones. Organize the chapters and subchapters in 1.1, 1.2 and 1.1.1 and 1.1.2 and so on.
+
+    <topics>:
     {all_topics}
 
+
+    <book idea>:
+    {task}
+
+    Now use these <topics< to generate the 8 chapter outline based off the <book idea>, no explanation, nothing else.
     Return only in JSON format. """
 
     if len(outline_prompt) > max_context_window_chars:
@@ -544,12 +601,11 @@ def generate_textbook(task, urls):
             outline_prompt, width=max_context_window_chars
         )
 
-    completion = create_completion(
-        [{"role": "user", "content": outline_prompt}], model="gpt-4o-2024-08-06"
-    )
-    if completion is None:
+    # Instead of calling create_completion directly, use gpt_inference which already adds the system prompt
+    outline_response = gpt_inference(outline_prompt, language)
+
+    if outline_response is None or outline_response.strip() == "":
         raise Exception("Failed to get a completion for outline.")
-    outline_response = extract_response(completion)
 
     correction_prompt_14 = f"""
     This guide is not detailed enough, you are scratching only the surface of the topics. 
@@ -577,12 +633,9 @@ def generate_textbook(task, urls):
             correction_prompt_14, width=max_context_window_chars
         )
 
-    completion = create_completion([{"role": "user", "content": correction_prompt_14}])
-    if completion is None:
+    outline_14 = gpt_inference(correction_prompt_14, language)
+    if outline_14 is None or outline_14.strip() == "":
         raise Exception("Failed to get a completion for correction 1-4.")
-    outline_14_raw = completion.choices[0].message.content
-    outline_14 = extract_response(completion)
-
     print(f"outline_14 = {outline_14}")
 
     if len(correction_prompt_58) > max_context_window_chars:
@@ -590,12 +643,9 @@ def generate_textbook(task, urls):
             correction_prompt_58, width=max_context_window_chars
         )
 
-    completion = create_completion([{"role": "user", "content": correction_prompt_58}])
-    if completion is None:
+    outline_58 = gpt_inference(correction_prompt_58, language)
+    if outline_58 is None or outline_58.strip() == "":
         raise Exception("Failed to get a completion for correction 5-8.")
-    outline_58_raw = completion.choices[0].message.content
-    outline_58 = extract_response(completion)
-
     print(f"outline_58 = {outline_58}")
 
     list_of_chapters = ["one", "two", "three", "four", "five", "six", "seven", "eight"]
@@ -625,27 +675,34 @@ def generate_textbook(task, urls):
             """
             breakdown_prompt += """You response a json with structure like this ```json\n{\n  "8": {\n    "title": "Achieving Lasting Change and Inner Freedom",\n    "subchapters": {\n      "8.1": {\n        "title": "Inner Alignment and Joy Creation",\n        "subchapters": {\n          "8.1.1": {\n            "title": "Understanding Inner Alignment",\n            "details": {\n              "keywords": [\n                "Alignment",\n                "Authenticity",\n                "Inner truth",\n                "Congruence",\n                "Personal values",\n                "Self-awareness",\n                "Mind-body connection"\n              ]\n            }\n          },\n          "8.1.2": {\n            "title": "Practices for Fostering Inner Joy",\n            "details": {\n              "keywords": [\n                "Joyfulness",\n                "Daily rituals",\n                "Positive habits",\n                "Gratitude practices",\n                "Mindfulness techniques",\n                "Creative expression",\n                "Social connections"\n              ]\n            }\n          }\n        }\n      },\n      "8.2": {\n        "title": "Practical Approaches to Well-Being",\n        "subchapters": {\n          "8.2.1": {\n            "title": "Integrating Mindfulness into Everyday Activities",\n            "details": {\n              "keywords": [\n                "Mindfulness",\n                "Present moment awareness",\n                "Everyday practice",\n                "Focus and clarity",\n                "Routine mindfulness exercises",\n                "Reduced stress",\n                "Increased engagement"\n              ]\n            }\n          },\n          "8.2.2": {\n            "title": "Holistic Nutrition for Mind and Body Health",\n            "details": {\n              "keywords": [\n                "Nutrition",\n                "Holistic health",\n                "Mind-body connection",\n                "Balanced diet",\n                "Nutrient-rich foods",\n                "Emotional well-being",\n                "Food as medicine"\n              ]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```. Make sure your resonse is a valid JSON. Regard only the given questions or instructions in the prompt and always return only a json."""
 
-            if len(outline_14_raw) > max_context_window_chars:
-                outline_14_raw = textwrap.shorten(
-                    outline_14_raw, width=max_context_window_chars
-                )
+            # Extract only the relevant chapter from outline_14
+            try:
+                parsed_outline = json.loads(outline_14)
+                relevant_outline = parsed_outline.get(num, None)
+                if relevant_outline:
+                    relevant_outline_str = json.dumps(relevant_outline)
+                else:
+                    relevant_outline_str = outline_14  # Fallback if key not found
+            except Exception as e:
+                print(f"Error parsing outline_14: {e}")
+                relevant_outline_str = outline_14
 
+            if len(relevant_outline_str) > max_context_window_chars:
+                relevant_outline_str = textwrap.shorten(
+                    relevant_outline_str, width=max_context_window_chars
+                )
             if len(breakdown_prompt) > max_context_window_chars:
                 breakdown_prompt = textwrap.shorten(
                     breakdown_prompt, width=max_context_window_chars
                 )
 
-            completion = create_completion(
-                [
-                    {"role": "assistant", "content": outline_14_raw},
-                    {"role": "user", "content": breakdown_prompt},
-                ]
-            )
+            combined_prompt = f"{relevant_outline_str}\n{breakdown_prompt}"
+            breakdown_response = gpt_inference(combined_prompt, language)
 
-            if completion is None:
+            if breakdown_response is None or breakdown_response.strip() == "":
                 raise Exception(f"Failed to get a completion for breakdown {chap}.")
 
-            chapter_breakdown = extract_response(completion)
+            chapter_breakdown = breakdown_response
             chapter_breakdown = (
                 chapter_breakdown.replace("```json", "").replace("```", "").strip()
             )
@@ -660,7 +717,7 @@ def generate_textbook(task, urls):
 
                 # SELECT BEST FILE
                 best_file_content = select_best_file_for_subchapter(
-                    processed_files, notation[1]
+                    processed_files, language, notation[1]
                 )
                 if best_file_content is None:
                     # fallback to scraping
@@ -672,19 +729,19 @@ def generate_textbook(task, urls):
                         scraped_files.append(
                             {"filename": f"scraped_{i}.txt", "content": txt}
                         )
-                    processed_scraped = process_user_files(scraped_files)
+                    processed_scraped = process_user_files(scraped_files, language)
                     best_file_content = select_best_file_for_subchapter(
-                        processed_scraped, notation[1]
+                        processed_scraped, language, notation[1]
                     )
 
                 if best_file_content is None:
                     best_file_content = "Not enough data found for this subchapter."
 
                 chapter_write_prompt = f"""{best_file_content}
-                You are a professor in the field of "{topic}", only writing {notation[1]} for the textbook. You explain the details of information clearly to other professionals in the field, making it dense with information, clear and easy to understand.
+                You are a professor in the field of "{topic}", writing {notation[1]} for the textbook. Your chapters are long and thoroughly developed, packed with dense information while remaining clear and easy to understand. Each section explores concepts in depth, providing extensive explanations and detailed discussions that give professionals in the field a comprehensive understanding.
                 Use the information from the file to write about the topic in detail, using exercises, specific examples, concrete numbers, case studies and real-life applications if applicable. Avoid generalizations and overviews. 
                 Some other features to include: engaging narrative, research-based insights and actionable tips.
-                Only return the specific Textpart, nothing else."""
+                Only return the specific textpart, nothing else."""
 
                 if len(chapter_breakdown) > max_context_window_chars:
                     chapter_breakdown = textwrap.shorten(
@@ -696,12 +753,31 @@ def generate_textbook(task, urls):
                         chapter_write_prompt, width=max_context_window_chars
                     )
 
+                # Ensure we get the system prompt for the session
+                system_prompt = (
+                    f"You are an AI assistant that always responds in {language}."
+                )
+
+                if len(system_prompt) > max_context_window_chars:
+                    system_prompt = textwrap.shorten(
+                        system_prompt, width=max_context_window_chars
+                    )
+
+#                print("System prompt: %s", system_prompt)
+#                print("Chapter breakdown: %s", chapter_breakdown)
+#                print("Chapter write prompt: %s", chapter_write_prompt)
+
                 completion = create_completion(
                     [
+                        {
+                            "role": "system",
+                            "content": system_prompt,
+                        },  # Add system prompt first
                         {"role": "assistant", "content": chapter_breakdown},
                         {"role": "user", "content": chapter_write_prompt},
                     ]
                 )
+
                 if completion is None:
                     raise Exception(
                         f"Failed to get a completion for chapter write {notation[0]}."
@@ -709,17 +785,19 @@ def generate_textbook(task, urls):
                 written_chapter = extract_response(completion)
 
                 revision_prompt = f"""
-                You're a teacher revising a draft section of a textbook titled ”{topic}”. The section in focus is: {notation}.
+                You’re a teacher revising a draft section of a textbook titled: ‘{topic}’. The section in focus is: {notation}.
+
                 The original text is:
+
                 {written_chapter}
 
                 Your goal is to refine and enhance this section by making it:
-                	•	Information-rich – Keep it detailed and substantive, avoiding unnecessary generalizations while incorporating relevant examples, case studies, or illustrative scenarios.
-                	•	Engaging – Maintain a clear and professional tone while making the content more compelling and well-structured.
-                	•	Accessible & well-organized – Improve readability by ensuring smooth transitions and logical sequencing of ideas. Restructure where needed for clarity and flow.
-                	•	Interactive – Where appropriate, integrate an exercise or thought-provoking question to encourage deeper understanding.
+                • Highly detailed and information-rich – Expand on key concepts with thorough explanations, incorporating relevant examples, case studies, illustrative scenarios, and well-supported arguments. Avoid unnecessary generalizations and ensure every point is deeply explored.
+                • Engaging – Maintain a clear and professional tone while making the content compelling, well-structured, and intellectually stimulating.
+                • Accessible & well-organized – Improve readability with smooth transitions and logical sequencing. Restructure where needed for clarity and flow while keeping details exhaustive and precise.
+                • Interactive – Where appropriate, integrate an exercise, thought-provoking question, or practical application to encourage deeper understanding and engagement.
 
-                Your revision should bring clarity, depth, and coherence to the text while keeping it immersive and intellectually stimulating. Return only the revised section."""
+                Your revision should bring clarity, depth, and coherence to the text while ensuring it remains immersive, extensively detailed, and rigorously developed. Return only the revised section."""
 
                 if len(revision_prompt) > max_context_window_chars:
                     revision_prompt = textwrap.shorten(
@@ -727,7 +805,10 @@ def generate_textbook(task, urls):
                     )
 
                 completion = create_completion(
-                    [{"role": "user", "content": revision_prompt}]
+                    [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": revision_prompt},
+                    ]
                 )
                 if completion is None:
                     raise Exception(
@@ -770,11 +851,12 @@ def generate_textbook(task, urls):
 
                 completion = create_completion(
                     [
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": revision_prompt},
                         {"role": "assistant", "content": revised_chapter},
                         {"role": "user", "content": formatting_prompt},
                     ],
-                    model="gpt-4o-2024-08-06",
+                    model="gpt-4o-mini-2024-07-18",
                 )
 
                 if completion is None:
@@ -792,11 +874,23 @@ def generate_textbook(task, urls):
             Don't write full sentences yet, try to use as much information as possible. Don't explain yourself."""
             breakdown_prompt += """You response a json with structure like this ```json\n{\n  "8": {\n    "title": "Achieving Lasting Change and Inner Freedom",\n    "subchapters": {\n      "8.1": {\n        "title": "Inner Alignment and Joy Creation",\n        "subchapters": {\n          "8.1.1": {\n            "title": "Understanding Inner Alignment",\n            "details": {\n              "keywords": [\n                "Alignment",\n                "Authenticity",\n                "Inner truth",\n                "Congruence",\n                "Personal values",\n                "Self-awareness",\n                "Mind-body connection"\n              ]\n            }\n          },\n          "8.1.2": {\n            "title": "Practices for Fostering Inner Joy",\n            "details": {\n              "keywords": [\n                "Joyfulness",\n                "Daily rituals",\n                "Positive habits",\n                "Gratitude practices",\n                "Mindfulness techniques",\n                "Creative expression",\n                "Social connections"\n              ]\n            }\n          }\n        }\n      },\n      "8.2": {\n        "title": "Practical Approaches to Well-Being",\n        "subchapters": {\n          "8.2.1": {\n            "title": "Integrating Mindfulness into Everyday Activities",\n            "details": {\n              "keywords": [\n                "Mindfulness",\n                "Present moment awareness",\n                "Everyday practice",\n                "Focus and clarity",\n                "Routine mindfulness exercises",\n                "Reduced stress",\n                "Increased engagement"\n              ]\n            }\n          },\n          "8.2.2": {\n            "title": "Holistic Nutrition for Mind and Body Health",\n            "details": {\n              "keywords": [\n                "Nutrition",\n                "Holistic health",\n                "Mind-body connection",\n                "Balanced diet",\n                "Nutrient-rich foods",\n                "Emotional well-being",\n                "Food as medicine"\n              ]\n            }\n          }\n        }\n      }\n    }\n  }\n}\n```. Make sure your resonse is a valid JSON. Regard only the given questions or instructions in the prompt and always return only a json."""
 
-            if len(outline_58_raw) > max_context_window_chars:
-                outline_58_raw = textwrap.shorten(
-                    outline_58_raw, width=max_context_window_chars
-                )
+            try:
+                parsed_outline = json.loads(
+                    outline_58
+                )  # or outline_58_raw if that's your full text
+                relevant_outline = parsed_outline.get(num, None)
+                if relevant_outline:
+                    relevant_outline_str = json.dumps(relevant_outline)
+                else:
+                    relevant_outline_str = outline_58  # fallback if key not found
+            except Exception as e:
+                print(f"Error parsing outline_58: {e}")
+                relevant_outline_str = outline_58
 
+            if len(relevant_outline_str) > max_context_window_chars:
+                relevant_outline_str = textwrap.shorten(
+                    relevant_outline_str, width=max_context_window_chars
+                )
             if len(breakdown_prompt) > max_context_window_chars:
                 breakdown_prompt = textwrap.shorten(
                     breakdown_prompt, width=max_context_window_chars
@@ -804,8 +898,8 @@ def generate_textbook(task, urls):
 
             completion = create_completion(
                 [
-                    # Instead of PDF_content, we show GPT the corrected outline for chapters 5-8
-                    {"role": "assistant", "content": outline_58_raw},
+                    {"role": "system", "content": system_prompt},
+                    {"role": "assistant", "content": relevant_outline_str},
                     {"role": "user", "content": breakdown_prompt},
                 ]
             )
@@ -826,7 +920,7 @@ def generate_textbook(task, urls):
 
                 # SELECT BEST FILE
                 best_file_content = select_best_file_for_subchapter(
-                    processed_files, notation[1]
+                    processed_files, language, notation[1]
                 )
 
                 if best_file_content is None:
@@ -839,16 +933,16 @@ def generate_textbook(task, urls):
                         scraped_files.append(
                             {"filename": f"scraped_{i}.txt", "content": txt}
                         )
-                    processed_scraped = process_user_files(scraped_files)
+                    processed_scraped = process_user_files(scraped_files, language)
                     best_file_content = select_best_file_for_subchapter(
-                        processed_scraped, notation[1]
+                        processed_scraped, language, notation[1]
                     )
 
                 if best_file_content is None:
                     best_file_content = "Not enough data found for this subchapter."
 
                 chapter_write_prompt = f"""{best_file_content}
-                You are a professor in the field of "{topic}", only writing {notation[1]} for the textbook. You explain the details of information clearly to other professionals in the field, making it dense with information, clear and easy to understand.
+                You are a professor in the field of "{topic}", writing {notation[1]} for the textbook. Your chapters are long and thoroughly developed, packed with dense information while remaining clear and easy to understand. Each section explores concepts in depth, providing extensive explanations and detailed discussions that give professionals in the field a comprehensive understanding.
                 Use the information from the file to write about the topic in detail, using exercises, specific examples, concrete numbers, case studies and real-life applications if applicable. Avoid generalizations and overviews. 
                 Some other features to include: engaging narrative, research-based insights and actionable tips.
                 Only return the specific Textpart, nothing else."""
@@ -865,6 +959,7 @@ def generate_textbook(task, urls):
 
                 completion = create_completion(
                     [
+                        {"role": "system", "content": system_prompt},
                         {"role": "assistant", "content": chapter_breakdown},
                         {"role": "user", "content": chapter_write_prompt},
                     ]
@@ -876,17 +971,19 @@ def generate_textbook(task, urls):
                 written_chapter = extract_response(completion)
 
                 revision_prompt = f"""
-                You're a teacher revising a draft section of a textbook titled ”{topic}”. The section in focus is: {notation}.
+                You’re a teacher revising a draft section of a textbook titled: ‘{topic}’. The section in focus is: {notation}.
+
                 The original text is:
+
                 {written_chapter}
 
                 Your goal is to refine and enhance this section by making it:
-                	•	Information-rich – Keep it detailed and substantive, avoiding unnecessary generalizations while incorporating relevant examples, case studies, or illustrative scenarios.
-                	•	Engaging – Maintain a clear and professional tone while making the content more compelling and well-structured.
-                	•	Accessible & well-organized – Improve readability by ensuring smooth transitions and logical sequencing of ideas. Restructure where needed for clarity and flow.
-                	•	Interactive – Where appropriate, integrate an exercise or thought-provoking question to encourage deeper understanding.
+                • Highly detailed and information-rich – Expand on key concepts with thorough explanations, incorporating relevant examples, case studies, illustrative scenarios, and well-supported arguments. Avoid unnecessary generalizations and ensure every point is deeply explored.
+                • Engaging – Maintain a clear and professional tone while making the content compelling, well-structured, and intellectually stimulating.
+                • Accessible & well-organized – Improve readability with smooth transitions and logical sequencing. Restructure where needed for clarity and flow while keeping details exhaustive and precise.
+                • Interactive – Where appropriate, integrate an exercise, thought-provoking question, or practical application to encourage deeper understanding and engagement.
 
-                Your revision should bring clarity, depth, and coherence to the text while keeping it immersive and intellectually stimulating. Return only the revised section."""
+                Your revision should bring clarity, depth, and coherence to the text while ensuring it remains immersive, extensively detailed, and rigorously developed. Return only the revised section."""
 
                 if len(revision_prompt) > max_context_window_chars:
                     revision_prompt = textwrap.shorten(
@@ -894,7 +991,10 @@ def generate_textbook(task, urls):
                     )
 
                 completion = create_completion(
-                    [{"role": "user", "content": revision_prompt}]
+                    [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": revision_prompt},
+                    ]
                 )
                 if completion is None:
                     raise Exception(
@@ -937,11 +1037,12 @@ def generate_textbook(task, urls):
 
                 completion = create_completion(
                     [
+                        {"role": "system", "content": system_prompt},
                         {"role": "user", "content": revision_prompt},
                         {"role": "assistant", "content": revised_chapter},
                         {"role": "user", "content": formatting_prompt},
                     ],
-                    model="gpt-4o-2024-08-06",
+                    model="gpt-4o-mini-2024-07-18",
                 )
                 if completion is None:
                     raise Exception(
@@ -950,7 +1051,7 @@ def generate_textbook(task, urls):
                 final_text_part = extract_response(completion)
                 chapters_storage.append(final_text_part)
 
-    outline = str(outline_14_raw) + "\n" + str(outline_58_raw)
+    outline = str(outline_14) + "\n" + str(outline_58)
     model = "gpt-4o-mini-2024-07-18"
     separator = "\n\n"
     book = separator.join(chapters_storage)
@@ -979,12 +1080,12 @@ def save_book(json_to_save):
     markdowns_list.append(json_to_save)
 
 
-def Make_Textbook(task, urls):
+def Make_Textbook(task, language, urls):
     print("function Make_Textbook")
-    book, topic, outline, model, chapters_list = generate_textbook(task, urls)
+    book, topic, outline, model, chapters_list = generate_textbook(task, language, urls)
     # create summary
     content = f"Generate a summary of what the following book is about. Here is the book:\n{book}"
-    summary = gpt_inference(content)
+    summary = gpt_inference(content, language)
     # save file
     json_to_save = {
         "book": book,
@@ -998,14 +1099,15 @@ def Make_Textbook(task, urls):
     return book
 
 
-@app.route("/v1/knowledge_gathering", methods=["POST"])
-def knowledge_gathering():
+@app.route("/v1/textbook_generator", methods=["POST"])
+def textbook_generator():
     data = request.json
     task = data["task"]
+    language = data["language"]
     urls = data.get("urls", [])
 
-    textbook_text = Make_Textbook(task, urls)
-    response = solve_task(task, textbook_text)
+    textbook_text = Make_Textbook(task, language, urls)
+    response = solve_task(task, language, textbook_text)
     response = {
         "response": response,
     }
