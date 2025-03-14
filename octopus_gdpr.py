@@ -366,15 +366,18 @@ def sensitive_information():
     data = request.json
     text = data.get("value1", "")
 
-    result = int(model_manager.model_inference(text, "sensitivity"))
+    result = model_manager.model_inference(text, "sensitivity")
+    result_int = int(result)
 
-    if result >= 2:
+    if result_int >= 2:
         response = {
+            "response": result,
             "is_sensitive": True,
             "sensitive_part": None
         }
     else:
         response = {
+            "response": result,
             "is_sensitive": False,
             "sensitive_part": None
         }
